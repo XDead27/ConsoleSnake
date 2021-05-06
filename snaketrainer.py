@@ -198,12 +198,12 @@ while gen <= args.generations or args.generations == 0:
             if os.path.exists("NN/" + args.map + ".save"):
                 lastWinners = nn.restore("NN/" + args.map + ".save")
                 for x in lastWinners:
-                    winner = nn.QuirkyComputer(1, [1], 1)
+                    winner = nn.ANN(1, [1], 1)
                     winner.init_network_from_list(x)
                     pop.append(winner)
 
             for i in range(args.players - len(lastWinners)):
-                pop.append(nn.QuirkyComputer(121, [100, 100], 4))
+                pop.append(nn.ANN(121, [100, 100], 4))
 
             #Big loop
             while not popDead == args.players and moves < args.max_moves:

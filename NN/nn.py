@@ -6,7 +6,7 @@ import json
 def sigmoid(x):
     return 1.0/(1.0 + math.exp(-x))
 
-class QuirkyComputer:
+class ANN:
     def __init__(self, ninput, nhidden, noutput):
         self.nn = self.init_network(ninput, nhidden, noutput)
 
