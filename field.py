@@ -23,8 +23,6 @@ class Perimeter:
 
 
 class Field:
-    shapes = []
-
     def __init__(self, height, width, blank_number = 0, blank_string = '  '):
         self.setDimensions(height, width)
         self.blank_number = blank_number

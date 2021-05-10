@@ -18,6 +18,18 @@ class Map:
         tprint(name, font=font)
         tprint("-----------")
 
+    def displayDetails(self, stdscr):
+        print("Types of fruits in this gamemode:\n")
+        alreadyMentioned = []
+        for fs in self.fruitSpawners:
+            name = fs.fruitType[0].__name__
+            if name not in alreadyMentioned:
+                fruit = fs.fruitType[0]([0, 0])
+                char = fruit.string
+                desc = fruit.description
+                print(text2art(char, font='cjk') + "(" + name + ") - " + desc + "\n")
+                alreadyMentioned.append(name)
+
     def askForParams(self, stdscr):
         pass
 

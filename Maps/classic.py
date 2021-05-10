@@ -15,26 +15,20 @@ class Classic(Map):
         #Colors for our map
         curses.init_pair(100, curses.COLOR_BLACK, curses.COLOR_BLACK)
         curses.init_pair(101, curses.COLOR_WHITE, curses.COLOR_BLACK)
-        curses.init_pair(1, curses.COLOR_GREEN, curses. COLOR_BLACK)
-        curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
-        curses.init_pair(9, curses.COLOR_GREEN, curses.COLOR_WHITE)
-        curses.init_pair(10, curses.COLOR_GREEN, curses.COLOR_RED)
-        curses.init_pair(11, curses.COLOR_RED, curses.COLOR_WHITE)
-
-        self.field = Field(20, 20, 0, '  ')
-        self.p1 = self.field.addPerimeter(20, 20, [0, 0], -1, 's', 101)
-        self.obstacles.append(self.p1)
 
         self.DEFAULT_SIZE = 20
 
-        #Setup spawners
-        fs1 = frt.FruitSpawner(frt.Plus1Fruit)
-        fs1.bindAreaToPerimeter(self.p1)
-        fs1.setFruitAesthetics(1, 'x', 10)
-        fs1.setMaxFruits(1)
-        fs1.setFruitRarity(1)
+        self.field = Field(self.DEFAULT_SIZE + 1, self.DEFAULT_SIZE + 1, 0, '  ')
+        self.p1 = self.field.addPerimeter(self.DEFAULT_SIZE, self.DEFAULT_SIZE, [0, 0], -1, 's', 101)
+        self.obstacles.append(self.p1)
 
-        self.fruitSpawners.append(fs1)
+        #Setup spawners
+        self.fs1 = frt.FruitSpawner(frt.Plus1Fruit)
+        self.fs1.bindAreaToPerimeter(self.p1)
+        self.fs1.setMaxFruits(3)
+        self.fs1.setFruitRarity(1)
+
+        self.fruitSpawners.append(self.fs1)
 
         self.lastNumberOfFruits = [0] * len(self.fruitSpawners)
 
@@ -55,9 +49,13 @@ class Classic(Map):
         h = self.DEFAULT_SIZE if h == '' else int(h)
         w = self.DEFAULT_SIZE if w == '' else int(w)
 
-        self.field.resizePerimeter(self.p1, h, w)
-        self.field.height = h
-        self.field.width = w
+        self.field.setDimensions(h + 1, w + 1)
+        self.field.reset()
+        self.field.shapes.remove(self.p1)
+        self.p1 = self.field.addPerimeter(h, w, [0, 0], -1, 's', 101)
+        self.fs1.bindAreaToPerimeter(self.p1)
+        self.field.refresh()
+
         curses.cbreak()
         stdscr.nodelay(True)
 

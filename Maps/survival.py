@@ -16,11 +16,6 @@ class Survival(Map):
         #Colors for our map
         curses.init_pair(100, curses.COLOR_BLACK, curses.COLOR_BLACK)
         curses.init_pair(101, curses.COLOR_WHITE, curses.COLOR_BLACK)
-        curses.init_pair(1, curses.COLOR_GREEN, curses. COLOR_BLACK)
-        curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
-        curses.init_pair(9, curses.COLOR_GREEN, curses.COLOR_WHITE)
-        curses.init_pair(10, curses.COLOR_GREEN, curses.COLOR_RED)
-        curses.init_pair(11, curses.COLOR_RED, curses.COLOR_WHITE)
 
         self.field = Field(20, 20, 0, '  ')
         self.p1 = self.field.addPerimeter(20, 20, [0, 0], -1, 's', 101)
@@ -34,15 +29,13 @@ class Survival(Map):
         #Setup spawners
         fs1 = frt.FruitSpawner(frt.Plus1Fruit)
         fs1.bindAreaToPerimeter(self.p1)
-        fs1.setFruitAesthetics(1, 'x', 10)
         fs1.setMaxFruits(2)
         fs1.setFruitRarity(0.2)
 
         fs2 = frt.FruitSpawner(frt.TeliprtFruit)
         fs2.bindAreaToPerimeter(self.p1)
-        fs2.setFruitAesthetics(3, 'D', 9)
         fs2.setMaxFruits(1)
-        fs2.setFruitRarity(0.008)
+        fs2.setFruitRarity(0.002)
 
         self.fruitSpawners.append(fs1)
         self.fruitSpawners.append(fs2)
@@ -66,9 +59,15 @@ class Survival(Map):
         h = self.DEFAULT_SIZE if h == '' else int(h)
         w = self.DEFAULT_SIZE if w == '' else int(w)
 
-        self.field.resizePerimeter(self.p1, h, w)
-        self.field.height = h
-        self.field.width = w
+        self.field.setDimensions(h + 1, w + 1)
+        self.field.reset()
+        self.field.shapes.remove(self.p1)
+        self.p1 = self.field.addPerimeter(h, w, [0, 0], -1, 's', 101)
+        self.field.refresh()
+
+        for fs in self.fruitSpawners:
+            fs.bindAreaToPerimeter(self.p1)
+
         curses.cbreak()
         stdscr.nodelay(True)
 
@@ -78,6 +77,10 @@ class Survival(Map):
     def clearObstacles(self):
         for x in self.coords:
             self.field.clearTempNumAt(x)
+        self.coords = []
+
+    def calculateRarity(self, turn):
+        return 30/(turn+30)
 
     def update(self):
         self.iters += 1
@@ -95,3 +98,4 @@ class Survival(Map):
                 self.clearObstacles()
             self.fruitSpawners[i].spawnInField(self.field)
             self.lastNumberOfFruits[i] = len(self.fruitSpawners[i].spawnedFruits)
+            self.fruitSpawners[0].setFruitRarity(self.calculateRarity(self.iters))

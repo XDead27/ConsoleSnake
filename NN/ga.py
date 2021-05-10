@@ -34,12 +34,12 @@ def vec_to_nn(vec):
     return nn
 
 def mutate(vec):
-    nbOfMutations = randrange(0, math.floor(0.1*len(vec)))
+    nbOfMutations = randrange(0, math.ceil(0.05*len(vec)))
     for i in range(nbOfMutations):
         alleleToMutate = randrange(0, len(vec))
         while vec[alleleToMutate] in [-1, -2]:
             alleleToMutate = randrange(0, len(vec))
-        vec[alleleToMutate] *= random()
+        vec[alleleToMutate] = uniform(-1, 1)
 
     return vec
 

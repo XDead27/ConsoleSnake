@@ -14,6 +14,7 @@ from random import randrange
 #Parse flags and arguments
 parser = ap.ArgumentParser(description='Snek gaem with frends :>')
 parser.add_argument("map", choices=['duel', 'survival', 'classic'], help="Map to play on")
+parser.add_argument("--details", action="store_true", help="Display map details and exit")
 parser.add_argument("-p", "--players", type=int, default=2, help="Number of players")
 parser.add_argument("-f", "--flush-input", action="store_true", help="Makes the game a little harder by not storing inputs after each tick")
 parser.add_argument("-r", "--refresh", type=float, default=0.5, required=False, help="Input interval")
@@ -25,6 +26,12 @@ args = parser.parse_args()
 stdscr = curses.initscr()
 
 curses.start_color()
+curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
+curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+curses.init_pair(9, curses.COLOR_GREEN, curses.COLOR_RED)
+curses.init_pair(10, curses.COLOR_GREEN, curses.COLOR_WHITE)
+curses.init_pair(11, curses.COLOR_RED, curses.COLOR_WHITE)
+curses.init_pair(12, curses.COLOR_GREEN, curses.COLOR_WHITE)
 
 def endCurse():
     curses.nocbreak()
@@ -36,6 +43,11 @@ m = __import__("Maps." + args.map)
 m = getattr(m, args.map)
 
 map = getattr(m, args.map.capitalize())()
+
+if args.details:
+    endCurse()
+    map.displayDetails(stdscr)
+    os._exit(0)
 
 if args.players > map.maxPlayers:
     print("Too many players for this map!")
@@ -66,17 +78,44 @@ def setupControls(name):
     stdscr.addstr("I very graciously thenk\n\n\n")
     return controls
 
-def setupAesthetics(name):
+def parseColor(color):
+    color = color.lower()
+    if color == "black":
+        return curses.COLOR_BLACK
+    elif color == "white":
+        return curses.COLOR_WHITE
+    elif color == "red":
+        return curses.COLOR_RED
+    elif color == "blue":
+        return curses.COLOR_BLUE
+    elif color == "green":
+        return curses.COLOR_GREEN
+    elif color == "magenta":
+        return curses.COLOR_MAGENTA
+    elif color == "cyan":
+        return curses.COLOR_CYAN
+    elif color == "yellow":
+        return curses.COLOR_YELLOW
+    else:
+        return curses.COLOR_WHITE
+
+def setupAesthetics(name, i):
     aesthetics = []
     stdscr.addstr("\nNow let's get funkeh with appearance, if you may >//< (for " + name + ")")
-    stdscr.addstr("\nSelect string... ")
+    stdscr.addstr("\nSelect character... ")
     curses.noecho()
     x = stdscr.getkey()
     aesthetics.append(x)
     stdscr.addstr(text2art(x, font = display_font))
     curses.echo()
-    stdscr.addstr("\nNow the color... ")
-    aesthetics.append(int(stdscr.getkey()))
+    stdscr.addstr("\nPls the foreground color... ")
+    fg = stdscr.getstr().decode("utf-8")
+    stdscr.addstr("\nOne more thing. The background if it's not too much to ask... ")
+    bg = stdscr.getstr().decode("utf-8")
+
+    curses.init_pair(i+1, parseColor(fg), parseColor(bg))
+
+    aesthetics.append(i+1)
     return aesthetics
 
 #Setup snakes controls and appearance
@@ -97,7 +136,7 @@ for i in range(args.players):
         defaultControls.remove(controls)
 
     if args.manual_aesthetics or len(defaultAesthetics) <= 0:
-        aesthetics = setupAesthetics(name)
+        aesthetics = setupAesthetics(name, i)
     else:
         aesthetics = defaultAesthetics[0]
         defaultAesthetics.remove(aesthetics)
@@ -174,7 +213,7 @@ def handlePosition(s):
         if isInRange(s.head, f.spawnStart, f.spawnEnd):
             for fruit in f.spawnedFruits:
                 if s.head == fruit.start:
-                    fruit.doMagic(s, field)
+                    fruit.doMagic(s, snakes, map)
                     f.spawnedFruits.remove(fruit)
                     field.shapes.remove(fruit)
                     return

@@ -22,7 +22,7 @@ parser.add_argument("-g", "--generations", type=int, default=0, required=False, 
 parser.add_argument("--manual-inputs", action="store_true", help="Setup inputs manually for each snake")
 parser.add_argument("--manual-aesthetics", action="store_true", help="Setup aesthetics manually for each snake")
 parser.add_argument("--collision", action="store_true", help="Do they bump into eachother?")
-parser.add_argument("--max-moves", type=int, default=200, required=False, help="How many times are they allowed to run in circles?")
+parser.add_argument("--max-moves", type=int, default=50, required=False, help="How many times are they allowed to run in circles?")
 
 args = parser.parse_args()
 
@@ -113,19 +113,23 @@ while gen <= args.generations or args.generations == 0:
     def handleInput(s, input):
         boxLeft = s.registerInput(input)
 
-        if not boxLeft == -1:
+        if isinstance(boxLeft, list):
             field.clearTempNumAt(boxLeft)
 
         handlePosition(s)
 
-        for x in s.body:
-            field.addTempNumAt(x, s.number, s.string, s.color)
+        if not s.dead:
+            for x in s.body:
+                field.addTempNumAt(x, s.number, s.string, s.color)
 
     def handlePosition(s):
         global fruitSpawner
         global field
-        numAtHead = field.getNumAt(s.head)
+        if not (s.head[0] in range(field.height) and s.head[1] in range(field.width)):
+            s.dead = True
+            return
 
+        numAtHead = field.getNumAt(s.head)
         if numAtHead == field.blank_number:
             return
 
@@ -249,7 +253,7 @@ while gen <= args.generations or args.generations == 0:
             rankings.sort(key=takeSecond)
 
             #Save the best n (20% of pop) in a separate file
-            n = math.floor(0.2 * args.players) if math.floor(0.2 * args.players) > 2 else 2
+            n = math.floor(0.2 * args.players) if math.floor(0.2 * args.players) > 4 else 4
             n = (n + 1) if n%2 == 1 else n
             theQuirkiest = []
             for winner in rankings[-n:]:

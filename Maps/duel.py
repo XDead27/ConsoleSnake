@@ -15,11 +15,6 @@ class Duel(Map):
         #Colors for our map
         curses.init_pair(100, curses.COLOR_BLACK, curses.COLOR_BLACK)
         curses.init_pair(101, curses.COLOR_WHITE, curses.COLOR_BLACK)
-        curses.init_pair(1, curses.COLOR_GREEN, curses. COLOR_BLACK)
-        curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
-        curses.init_pair(9, curses.COLOR_GREEN, curses.COLOR_WHITE)
-        curses.init_pair(10, curses.COLOR_GREEN, curses.COLOR_RED)
-        curses.init_pair(11, curses.COLOR_RED, curses.COLOR_WHITE)
 
         self.field = Field(17, 38, 0, '  ')
         self.p1 = self.field.addPerimeter(8, 8, [0, 0], -1, 's', 101)
@@ -37,38 +32,32 @@ class Duel(Map):
         #For Teliprt fruit
         fs11 = frt.FruitSpawner(frt.ObstacleFruit)
         fs11.bindAreaToPerimeter(self.p1)
-        fs11.setFruitAesthetics(2, 'O', 9)
         fs11.setMaxFruits(1)
         fs11.setFruitRarity(0.01)
 
         fs12 = frt.FruitSpawner(frt.ObstacleFruit)
         fs12.bindAreaToPerimeter(self.p2)
-        fs12.setFruitAesthetics(2, 'O', 9)
         fs12.setMaxFruits(1)
         fs12.setFruitRarity(0.01)
 
         #For standard fruits
         fs21 = frt.FruitSpawner(frt.Plus1Fruit)
         fs21.bindAreaToPerimeter(self.p1)
-        fs21.setFruitAesthetics(1, 'x', 10)
         fs21.setMaxFruits(1)
         fs21.setFruitRarity(1)
 
         fs22 = frt.FruitSpawner(frt.Plus1Fruit)
         fs22.bindAreaToPerimeter(self.p2)
-        fs22.setFruitAesthetics(1, 'x', 10)
         fs22.setMaxFruits(1)
         fs22.setFruitRarity(1)
 
         fs31 = frt.FruitSpawner(frt.TeliprtFruit)
         fs31.bindAreaToPerimeter(self.p1)
-        fs31.setFruitAesthetics(3, 'D', 9)
         fs31.setMaxFruits(1)
         fs31.setFruitRarity(0.008)
 
         fs32 = frt.FruitSpawner(frt.TeliprtFruit)
         fs32.bindAreaToPerimeter(self.p2)
-        fs32.setFruitAesthetics(3, 'D', 9)
         fs32.setMaxFruits(1)
         fs32.setFruitRarity(0.008)
 
