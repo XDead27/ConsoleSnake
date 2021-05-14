@@ -134,7 +134,7 @@ class Plus4Fruit(Fruit):
 
 class AbundanceFruit(Fruit):
     def __init__(self, pos, number = 5, string = 'A', color = 13):
-        super(Plus4Fruit, self).__init__(pos, number, string, color)
+        super(AbundanceFruit, self).__init__(pos, number, string, color)
         self.description = 'Fruits will start to flourish around you and chaos will reign supreme!'
 
     def doMagic(self, s, otherSnakes, map):
@@ -142,8 +142,35 @@ class AbundanceFruit(Fruit):
         for fs in map.fruitSpawners:
             if self in fs.spawnedFruits:
                 thisFs = fs
+                
+        #Chaos level
+        chaos_level = 15
+                
+        #Record initial state of the fruit spawner
+        init_type = thisFs.fruitType
+        init_maxFruits = thisFs.maxFruits
+        init_maxSpawns = thisFs.maxSpawns
+        init_rarity = thisFs.fruitRarity
+        
+        #Get current spawns and fruits
+        curr_spawns = thisFs.totalFruits
+        curr_fruits = len(thisFs.spawnedFruits)
 
         thisFs.setFruitType([Plus1Fruit, Plus4Fruit, TeliprtFruit, ObstacleFruit])
-        thisFs.setMaxFruits(20)
-        thisFs.setMaxSpawns(21)
+        thisFs.setMaxFruits(chaos_level + curr_fruits)
+        thisFs.setMaxSpawns(chaos_level + 1 + curr_spawns)
         thisFs.setFruitRarity(1)
+        
+        for i in range(chaos_level):
+            thisFs.spawnInField(map.field)
+        
+        #Reset overloaded fruit spawner
+        thisFs.setFruitType(init_type)
+        thisFs.setMaxFruits(init_maxFruits)
+        thisFs.setMaxSpawns(init_maxSpawns)
+        thisFs.setFruitRarity(init_rarity)
+        thisFs.totalFruits = curr_spawns
+            
+        
+            
+        

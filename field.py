@@ -1,5 +1,6 @@
 import math
 import inspect
+from os import rename
 
 class Segment:
     def __init__(self, start, end, number, string, color):
@@ -20,6 +21,25 @@ class Perimeter:
         self.string = string
         self.position = pos
         self.color = color
+        
+    def getCenter(self):
+        centerHeight = math.floor((self.position[0] + self.height) / 2)
+        centerWidth = math.floor((self.position[1] + self.width) / 2)
+        return [centerHeight, centerWidth]
+    
+    def getCorners(self):
+        ulH = self.position[0]
+        ulW = self.position[1]
+        urH = ulH
+        urW = ulW + self.width - 1
+        dlH = ulH + self.height - 1
+        dlW = ulW
+        drH = dlH
+        drW = urW
+        return [[ulH, ulW],[dlH, dlW],[urH, urW],[drH, drW]]
+    
+    def getEnd(self):
+        return self.getCorners()[3]
 
 
 class Field:

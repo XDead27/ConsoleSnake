@@ -29,6 +29,13 @@ args = parser.parse_args()
 stdscr = curses.initscr()
 
 curses.start_color()
+curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
+curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+curses.init_pair(9, curses.COLOR_GREEN, curses.COLOR_RED)
+curses.init_pair(10, curses.COLOR_GREEN, curses.COLOR_WHITE)
+curses.init_pair(11, curses.COLOR_RED, curses.COLOR_WHITE)
+curses.init_pair(12, curses.COLOR_GREEN, curses.COLOR_WHITE)
+curses.init_pair(13, curses.COLOR_CYAN, curses.COLOR_WHITE)
 
 def endCurse():
     curses.nocbreak()
@@ -137,7 +144,7 @@ while gen <= args.generations or args.generations == 0:
             if isInRange(s.head, f.spawnStart, f.spawnEnd):
                 for fruit in f.spawnedFruits:
                     if s.head == fruit.start:
-                        fruit.doMagic(s, field)
+                        fruit.doMagic(s, snakes, map)
                         f.spawnedFruits.remove(fruit)
                         field.shapes.remove(fruit)
                         return

@@ -10,10 +10,11 @@ from field import Field
 import fruits as frt
 import importlib
 from random import randrange
+from utils import *
 
 #Parse flags and arguments
 parser = ap.ArgumentParser(description='Snek gaem with frends :>')
-parser.add_argument("map", choices=['duel', 'survival', 'classic'], help="Map to play on")
+parser.add_argument("map", choices=['duel', 'survival', 'classic', 'dungeons'], help="Map to play on")
 parser.add_argument("--details", action="store_true", help="Display map details and exit")
 parser.add_argument("-p", "--players", type=int, default=2, help="Number of players")
 parser.add_argument("-f", "--flush-input", action="store_true", help="Makes the game a little harder by not storing inputs after each tick")
@@ -32,6 +33,7 @@ curses.init_pair(9, curses.COLOR_GREEN, curses.COLOR_RED)
 curses.init_pair(10, curses.COLOR_GREEN, curses.COLOR_WHITE)
 curses.init_pair(11, curses.COLOR_RED, curses.COLOR_WHITE)
 curses.init_pair(12, curses.COLOR_GREEN, curses.COLOR_WHITE)
+curses.init_pair(13, curses.COLOR_CYAN, curses.COLOR_WHITE)
 
 def endCurse():
     curses.nocbreak()
@@ -68,36 +70,17 @@ def setupControls(name):
     controls = []
     stdscr.addstr("\nSetting up controls for u, " + name + "...")
     stdscr.addstr("\nPwease hit UP key... ")
-    controls.append(stdscr.getkey())
+    controls.append(stdscr.getch())
     stdscr.addstr("\nNow LEFT... ")
-    controls.append(stdscr.getkey())
+    controls.append(stdscr.getch())
     stdscr.addstr("\nDOWN even... ")
-    controls.append(stdscr.getkey())
+    controls.append(stdscr.getch())
     stdscr.addstr("\nRIGHT if I may... ")
-    controls.append(stdscr.getkey())
-    stdscr.addstr("I very graciously thenk\n\n\n")
+    controls.append(stdscr.getch())
+    stdscr.addstr("\nI very graciously thenk\n\n\n")
+    stdscr.refresh()
+    time.sleep(1)
     return controls
-
-def parseColor(color):
-    color = color.lower()
-    if color == "black":
-        return curses.COLOR_BLACK
-    elif color == "white":
-        return curses.COLOR_WHITE
-    elif color == "red":
-        return curses.COLOR_RED
-    elif color == "blue":
-        return curses.COLOR_BLUE
-    elif color == "green":
-        return curses.COLOR_GREEN
-    elif color == "magenta":
-        return curses.COLOR_MAGENTA
-    elif color == "cyan":
-        return curses.COLOR_CYAN
-    elif color == "yellow":
-        return curses.COLOR_YELLOW
-    else:
-        return curses.COLOR_WHITE
 
 def setupAesthetics(name, i):
     aesthetics = []
@@ -120,7 +103,7 @@ def setupAesthetics(name, i):
 
 #Setup snakes controls and appearance
 snakes = []
-defaultControls = [['w', 'a', 's', 'd'], ['u', 'h', 'j', 'k']]
+defaultControls = [[ord('w'), ord('a'), ord('s'), ord('d')], [ord('u'), ord('h'), ord('j'), ord('k')]]
 defaultAesthetics = [['o', 1], ['o', 2]]
 for i in range(args.players):
     controls = None
@@ -181,7 +164,6 @@ def getInput(stdscr):
         a = stdscr.getch()
         if a == -1:
             break
-        a = chr(a)
         isOk = False
         for x in range(len(acceptedInputs)):
             if (not a in usedInputs) and (a in acceptedInputs[x]):
@@ -240,9 +222,6 @@ def displayScore(stdscr):
         else:
             stdscr.addstr(s.name + ': ')
         stdscr.addstr(str(s.getScore()) + '\n')
-
-def isInRange(pos, start, end):
-    return (pos[0] >= start[0] and pos[0] <= end[0] and pos[1] >= start[1] and pos[1] <= end[1])
 
 def doTheDead(s):
     stdscr.clear()
