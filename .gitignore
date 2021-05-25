@@ -1,1 +1,4 @@
 __pycache__/
+input_test.py
+*.npy
+*.save
