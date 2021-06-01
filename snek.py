@@ -53,3 +53,23 @@ class Snake:
                 return to_del
             else:
                 return -1
+            
+    def calculateNextPose(self, input):
+        if(input == self.up or input == self.right or input == self.left or input == self.down):
+            if (input == self.up and not self.direction == self.down) or (input == self.right and not self.direction == self.left) or (input == self.down and not self.direction == self.up) or (input == self.left and not self.direction == self.right):
+                dir = input
+            else:
+                dir = self.direction
+                
+            curr_head = self.head[:]
+
+            if dir == self.up:
+                curr_head[0] += -1
+            elif dir == self.right:
+                curr_head[1] += 1
+            elif dir == self.down:
+                curr_head[0] += 1
+            elif dir == self.left:
+                curr_head[1] += -1
+
+            return curr_head

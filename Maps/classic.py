@@ -25,7 +25,7 @@ class Classic(Map):
         #Setup spawners
         self.fs1 = frt.FruitSpawner(frt.Plus1Fruit)
         self.fs1.bindAreaToPerimeter(self.p1)
-        self.fs1.setMaxFruits(3)
+        self.fs1.setMaxFruits(4)
         self.fs1.setFruitRarity(1)
 
         self.fruitSpawners.append(self.fs1)

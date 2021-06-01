@@ -2,6 +2,9 @@ import math
 import inspect
 from os import rename
 
+def distance(start, end):
+    return math.sqrt((start[0] - end[0]) ** 2 + (start[1] - end[1]) ** 2)
+
 class Segment:
     def __init__(self, start, end, number, string, color):
         self.start = start
@@ -160,15 +163,23 @@ class Field:
         endW = position[1] + radius
 
         proximity = []
+        
+        # -2 for enemies
+        # -1 for walls and such
+        # 0 for nothing
+        # 99 for himself
+        # {4, 5, 6, 7, ...} for fruits 
 
         for x in range(startH, endH + 1):
             for y in range(startW, endW + 1):
                 if not x in range(self.height) or not y in range(self.width):
                     proximity.append(0)
                 elif self.map[x][y] == snake.number:
-                    proximity.append(99)
+                    proximity.append(0.5)
                 elif not showTemps and self.map[x][y] >= 99:
                     proximity.append(0)
+                elif self.map[x][y] >= 99:
+                    proximity.append(-2)
                 else:
                     proximity.append(self.map[x][y])
 
