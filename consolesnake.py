@@ -5,18 +5,22 @@ import os
 import time
 import curses
 import argparse as ap
+
+from numpy import dot
 from snek import Snake
 from field import Field
 import fruits as frt
 import importlib
-from random import randrange
+from random import choice, randrange
 from utils import *
+from NN.deepq import *
 
 #Parse flags and arguments
 parser = ap.ArgumentParser(description='Snek gaem with frends :>')
 parser.add_argument("map", choices=['duel', 'survival', 'classic', 'dungeons'], help="Map to play on")
 parser.add_argument("--details", action="store_true", help="Display map details and exit")
 parser.add_argument("-p", "--players", type=int, default=2, help="Number of players")
+parser.add_argument("-c", "--computers", type=int, default=0, help="Number of computers")
 parser.add_argument("-f", "--flush-input", action="store_true", help="Makes the game a little harder by not storing inputs after each tick")
 parser.add_argument("-r", "--refresh", type=float, default=0.5, required=False, help="Input interval")
 parser.add_argument("--manual-inputs", action="store_true", help="Setup inputs manually for each snake")
@@ -28,7 +32,9 @@ stdscr = curses.initscr()
 
 curses.start_color()
 curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
+curses.init_pair(201, curses.COLOR_GREEN, curses.COLOR_GREEN)
 curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+curses.init_pair(202, curses.COLOR_RED, curses.COLOR_RED)
 curses.init_pair(9, curses.COLOR_GREEN, curses.COLOR_RED)
 curses.init_pair(10, curses.COLOR_GREEN, curses.COLOR_WHITE)
 curses.init_pair(11, curses.COLOR_RED, curses.COLOR_WHITE)
@@ -51,7 +57,7 @@ if args.details:
     map.displayDetails(stdscr)
     os._exit(0)
 
-if args.players > map.maxPlayers:
+if args.players + args.computers > map.maxPlayers:
     print("Too many players for this map!")
     endCurse()
     os._exit(0)
@@ -97,14 +103,16 @@ def setupAesthetics(name, i):
     bg = stdscr.getstr().decode("utf-8")
 
     curses.init_pair(i+1, parseColor(fg), parseColor(bg))
+    curses.init_pair(200 + i + 1, parseColor(fg), parseColor(fg))
 
     aesthetics.append(i+1)
+    aesthetics.append(200 + i + 1)
     return aesthetics
 
 #Setup snakes controls and appearance
-snakes = []
+snakes = deque([])
 defaultControls = [[ord('w'), ord('a'), ord('s'), ord('d')], [ord('u'), ord('h'), ord('j'), ord('k')]]
-defaultAesthetics = [['o', 1], ['o', 2]]
+defaultAesthetics = [['o', 1, 201], ['o', 2, 202]]
 for i in range(args.players):
     controls = None
     aesthetics = None
@@ -127,7 +135,7 @@ for i in range(args.players):
     snake = Snake(map.getRandomSpawnLocation(i), 2)
     snake.name = name
     snake.setControls(controls[0], controls[1], controls[2], controls[3])
-    snake.setAesthetics(99 + i, aesthetics[0], aesthetics[1])
+    snake.setAesthetics(99 + i, aesthetics[0], aesthetics[1], aesthetics[2])
     snakes.append(snake)
     stdscr.clear()
     stdscr.refresh()
@@ -135,6 +143,28 @@ for i in range(args.players):
 acceptedInputs = []
 for s in snakes:
     acceptedInputs.append(s.getControls())
+    
+#Setup computer snakes
+comp_snakes = deque([])
+agents = deque([])
+for i in range(args.computers):
+    name = "Hank " + str(i+1)
+    snake = Snake(map.getRandomSpawnLocation(-(i+1)), 2)
+    snake.name = name
+    snake.setControls(1, 2, 3, 4)
+    
+    #random aesthetics -- yes it is indeed a mess
+    fg, bg = choice(['green', 'white', 'black', 'magenta', 'cyan']), choice(['green', 'white', 'black', 'magenta', 'cyan'])
+    curses.init_pair(map.maxPlayers - i + 1, parseColor(fg), parseColor(bg))
+    curses.init_pair(200 + map.maxPlayers - i + 1, parseColor(fg), parseColor(fg))
+    snake.setAesthetics(99 + map.maxPlayers - i, choice(['o', 'h', 'b', 'l', 'd']), map.maxPlayers - i + 1, 200 + map.maxPlayers - i + 1)
+    comp_snakes.append(snake)
+    stdscr.clear()
+    stdscr.refresh()
+    
+    agent = DQN([122, 90, 90, 70, 4], [leaky_relu, leaky_relu, leaky_relu, linear], [he_init, he_init, he_init, zero_init])
+    agent.load_from_file("NN/" + args.map + "_dqn_v1.1.npy")
+    agents.append(agent)
 
 field = map.field
 obstacles = map.obstacles
@@ -180,8 +210,15 @@ def handleInput(s, input):
 
     handlePosition(s)
 
-    for x in s.body:
-        field.addTempNumAt(x, s.number, s.string, s.color)
+    if not s.dead:
+        for x in s.body:
+            if x == s.head:
+                field.addTempNumAt(x, s.number, s.string, s.head_color)
+            else:
+                field.addTempNumAt(x, s.number, s.string, s.color)
+    else:
+        for x in s.body:
+            if not x == s.head: field.clearTempNumAt(x)
 
 def handlePosition(s):
     global fruitSpawner
@@ -222,15 +259,34 @@ def displayScore(stdscr):
         else:
             stdscr.addstr(s.name + ': ')
         stdscr.addstr(str(s.getScore()) + '\n')
+    
+    for s in comp_snakes:
+        if not s.name:
+            stdscr.addstr("Computer " + str(comp_snakes.index(s) + 1) + ': ')
+        else:
+            stdscr.addstr(s.name + ': ')
+        stdscr.addstr(str(s.getScore()) + '\n')
 
 def doTheDead(s):
+    if s in snakes:
+        #if s is a player, remove its inputs and then remove it from the list
+        idx = snakes.index(s)
+        del acceptedInputs[idx]
+        snakes.remove(s)
+    elif s in comp_snakes:
+        #if s is a computer, remove its agent and then remove it from the list
+        idx = comp_snakes.index(s)
+        del agents[idx]
+        comp_snakes.remove(s)
+    
+def doTheWin(s):
     stdscr.clear()
     stdscr.refresh()
     if not s.name:
         tprint("Player " + str(snakes.index(s) + 1), font='unives')
     else:
         tprint(s.name, font='unives')
-    tprint("\nis ded :(", font='twisted')
+    tprint("\nwon :>", font='twisted')
     time.sleep(1)
     curses.flushinp()
 
@@ -241,9 +297,11 @@ def main(stdscr):
     global fruitSpawners
     try:
         debugTimerStart = time.time()
+        alive = args.players + args.computers
+        last_snake = None
 
         #Big loop
-        while True:
+        while alive >= 1:
             debugTimerEnd = time.time()
 
             #Clean and draw field thingy
@@ -254,6 +312,16 @@ def main(stdscr):
             stdscr.refresh()
 
             debugTimerStart = time.time()
+            
+            #Get states
+            states = []
+            for cs in comp_snakes:
+                states.append(get_state(map, cs))
+            
+            #Get computer input
+            for i in range(len(agents)):
+                action = agent.predict_action(states[i])
+                handleInput(comp_snakes[i], positionToKey(action, comp_snakes[i]))
 
             #Get player input
             getInput(stdscr)
@@ -263,19 +331,31 @@ def main(stdscr):
                 if inputs[i] == None:
                     handleInput(snakes[i], snakes[i].direction)
                 else:
-                    handleInput(snakes[i], inputs[i])
+                    handleInput(snakes[i], inputs[i])            
 
             #Update for map related thingz
             map.update()
 
-            for s in snakes:
-                if s.dead:
-                    doTheDead(s)
-                    stdscr.nodelay(False)
-                    stdscr.getch()
-                    endCurse()
-                    os._exit(0)
-
+            s_to_remove = [snakes[i] for i in range(len(snakes)) if snakes[i].dead]
+            cs_to_remove = [comp_snakes[i] for i in range(len(comp_snakes)) if comp_snakes[i].dead]
+            for s in s_to_remove:
+                last_snake = s
+                doTheDead(s)
+                alive -= 1
+                    
+            for cs in cs_to_remove:
+                last_snake = cs
+                doTheDead(cs)
+                alive -= 1
+            
+            # alive = len(snakes) + len(comp_snakes)
+              
+        doTheWin(last_snake)
+        stdscr.nodelay(False)
+        stdscr.getch()
+        endCurse()
+        os._exit(0)
+        
     except KeyboardInterrupt:
         endCurse()
         os._exit(0)

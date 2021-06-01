@@ -42,6 +42,9 @@ def softmax(x, deriv = False):
         jac = np.diagflat(x) - np.dot(SM, SM.T)
         return jac
     
+def probability(x):
+    return x / np.sum(x, axis=0)
+    
 def hubert_loss(prediction, target, deriv = False):
     delta = 1.35 #tune this accordingly
     loss = np.abs(prediction - target)

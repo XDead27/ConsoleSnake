@@ -25,14 +25,14 @@ class Classic(Map):
         #Setup spawners
         self.fs1 = frt.FruitSpawner(frt.Plus1Fruit)
         self.fs1.bindAreaToPerimeter(self.p1)
-        self.fs1.setMaxFruits(4)
+        self.fs1.setMaxFruits(1)
         self.fs1.setFruitRarity(1)
 
         self.fruitSpawners.append(self.fs1)
 
         self.lastNumberOfFruits = [0] * len(self.fruitSpawners)
 
-        self.maxPlayers = 1
+        self.maxPlayers = 2
         self.spawnLocations = [[1, 1], [3, 3], [5, 5], [7, 7], [9, 5], [11, 3], [13, 1], [18, 18], [11, 9], [7, 13]]
 
     def askForParams(self, stdscr):

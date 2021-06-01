@@ -1,6 +1,5 @@
-from os import replace
 import numpy as np
-import sys
+import sys, os
 from random import *
 from numpy.core.numeric import indices
 sys.path.insert(1, '/home/mrxdead/Documents/Projects/ConsoleSnake')
@@ -16,17 +15,32 @@ class DQN:
         self.target_model = ANN(layers_dimensions, layer_activ_funcs, layer_init_funcs)
         self.target_model.nn = deepcopy(self.main_model.nn)
         self.experience = deque([])
-        self.max_experience = 1200
-        self.gamma = 0.1
-        self.learning_rate = 0.008
+        self.max_experience = 1000
+        self.gamma = 0.05
+        self.learning_rate = 0.01
         
         #Debug
         self.mean_error = 0.0
+        self.losses = []
         self.last_minibatch = []
         
     def init_from_list(self, list):
         self.main_model.init_network_from_list(list)
         self.update_target_model()
+        
+    def load_from_file(self, filename):
+        if os.path.exists(filename):
+            existing_data = np.load(filename, allow_pickle=True)
+            games = existing_data[2]
+            moves = existing_data[3]
+            existing_net = existing_data[0]
+            experience = existing_data[1]
+            
+            self.init_from_list(np.array(existing_net))
+            self.experience = experience
+            
+            return games, moves
+        return 0, 0
         
     def predict_action(self, state):
         return np.argmax(self.main_model.forward_propagate(state))
@@ -36,7 +50,7 @@ class DQN:
         
     def train(self):
         states, actions, rewards, next_states, dead = self.get_minibatch(self.minibatch_size)
-        sum_error = 0.0
+        self.losses = []
         #Iterate through all data from the minibatch
         for i in range(len(states)):
             #Calculate target Q value based on previous instance of network
@@ -62,9 +76,9 @@ class DQN:
             self.store_experience(states[i], actions[i], rewards[i], next_states[i], dead[i], new_surprise)
             
             #Update error for debug
-            sum_error += hubert_loss(max(predicted_output), target_value)
+            self.losses.append(hubert_loss(max(predicted_output), target_value))
             
-        self.mean_error = sum_error / len(states)
+        self.mean_error = sum(self.losses) / len(states)
             
             
         
@@ -85,9 +99,14 @@ class DQN:
         self.experience.appendleft([state, action, reward, next_state, dead, surprise])
 
     def get_minibatch(self, batch_size):
-        surprise_coef = softmax([x[5] for x in self.experience])
+        e_hyper = 0.001 #ensures that no transition has zero priority
+        a_hyper = 0.9 #controls the difference between high and low error
+        surprise_p = [((x[5] + e_hyper)**a_hyper) for x in self.experience]
+        surprise_coef = probability(surprise_p)
         cs = np.cumsum(surprise_coef)
         indices = [sum(cs < np.random.rand()) for i in range(batch_size)]
+        
+        self.last_minibatch = []
         
         states = []; actions =[]; rewards=[]; next_states=[]; dead=[]
         for idx in indices:

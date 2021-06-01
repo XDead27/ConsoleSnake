@@ -145,7 +145,7 @@ class Field:
     def clearTempNumAt(self, position):
         self.addTempNumAt(position, self.blank_number, self.blank_string, 100)
 
-    def addTempNumAt(self,position, num, char, color):
+    def addTempNumAt(self, position, num, char, color):
         self.map[position[0]][position[1]] = num
         self.drawnMap[position[0]][position[1]] = [char, color]
 
@@ -167,7 +167,7 @@ class Field:
         # -2 for enemies
         # -1 for walls and such
         # 0 for nothing
-        # 99 for himself
+        # -1 for himself
         # {4, 5, 6, 7, ...} for fruits 
 
         for x in range(startH, endH + 1):
@@ -175,7 +175,7 @@ class Field:
                 if not x in range(self.height) or not y in range(self.width):
                     proximity.append(0)
                 elif self.map[x][y] == snake.number:
-                    proximity.append(0.5)
+                    proximity.append(-1)
                 elif not showTemps and self.map[x][y] >= 99:
                     proximity.append(0)
                 elif self.map[x][y] >= 99:

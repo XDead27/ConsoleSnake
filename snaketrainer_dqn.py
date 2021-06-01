@@ -12,6 +12,7 @@ import fruits as frt
 import importlib
 from random import randrange
 from NN.deepq import *
+from utils import *
 
 #Parse flags and arguments
 parser = ap.ArgumentParser(description='Train snaek. Majeek!')
@@ -168,7 +169,6 @@ while gen <= args.games or args.games == 0:
             elif numAtHead == snake.number:
                 s.dead = True
 
-
     def drawField(stdscr):
         for x in range(field.height):
             for y in range(field.width):
@@ -184,75 +184,6 @@ while gen <= args.games or args.games == 0:
                 stdscr.addstr(s.name + ': ')
             stdscr.addstr(str(s.getScore()) + '\n')
 
-    def isInRange(pos, start, end):
-        return (pos[0] >= start[0] and pos[0] <= end[0] and pos[1] >= start[1] and pos[1] <= end[1])
-
-    def positionToKey(pos, snake):
-        if pos == 0:
-            return snake.up
-        elif pos == 1:
-            return snake.left
-        elif pos == 2:
-            return snake.down
-        elif pos == 3:
-            return snake.right
-        
-    def calculate_reward(pos):
-        global fruitSpawner
-        global field
-        if not (pos[0] in range(field.height) and pos[1] in range(field.width)):
-            return -1
-
-        numPos = field.getNumAt(pos)
-        if numPos == field.blank_number:
-            return 0
-
-        for f in fruitSpawners:
-            if isInRange(pos, f.spawnStart, f.spawnEnd):
-                for fruit in f.spawnedFruits:
-                    if pos == fruit.start:
-                        return 1
-
-        for o in obstacles:
-            if numPos == o.number:
-                return -1
-
-        for snake in snakes:
-            if numPos == snake.number:
-                return -1
-    
-    def get_state(snake):
-        state = field.getProximity(snake, 5, True)
-        
-        min_distance = np.inf
-        closest_fruit = None
-        
-        for f in fruitSpawners:
-            if isInRange(snake.head, f.spawnStart, f.spawnEnd):
-                for fruit in f.spawnedFruits:
-                    if min_distance > distance(snake.head, fruit.start):
-                        min_distance = distance(snake.head, fruit.start)
-                        closest_fruit = fruit
-        
-        if closest_fruit == None:
-            fruit_sine = 2
-        else:
-            fruit_sine = (closest_fruit.start[0] - snake.head[0]) / max(min_distance, 0.1)
-        
-        state.append(fruit_sine)
-        return state
-    
-    def print_state(stdscr, snake):
-        state = get_state(snake)
-        
-        stdscr.addstr("\nSnake vision:\n")
-        
-        for i in range(11):
-            for j in range(11):
-                stdscr.addstr(str(state[i*11 + j]))
-                #stdscr.addstr(str(len(state)))
-            stdscr.addstr('\n')
-        stdscr.addstr(str(state[-1]))
 
     #Beware the MAIN
     def main(stdscr):
@@ -269,17 +200,9 @@ while gen <= args.games or args.games == 0:
             
             agent = DQN([122, 90, 90, 70, 4], [leaky_relu, leaky_relu, leaky_relu, linear], [he_init, he_init, he_init, zero_init])
 
-            if os.path.exists("NN/" + args.map + "_dqn.npy"):
-                existing_data = np.load("NN/" + args.map + "_dqn.npy", allow_pickle=True)
-                games = existing_data[2]
-                moves = existing_data[3]
-                existing_net = existing_data[0]
-                experience = existing_data[1]
+            games, moves = agent.load_from_file("NN/" + args.map + "_dqn.npy")
                 
-                agent.init_from_list(np.array(existing_net))
-                agent.experience = experience
-                
-            epsilon = max(40 - games, 3)
+            epsilon = max(40 - games, 2)
             stop = False
                 
             #Big loop
@@ -293,34 +216,35 @@ while gen <= args.games or args.games == 0:
                 stdscr.addstr("Loop lag: " + str(debugTimerEnd - debugTimerStart - map.refreshRate))
                 stdscr.addstr("\nGame: " + str(games))
                 stdscr.addstr("\nMove: " + str(moves) + "\n")
-                stdscr.addstr("\nMean error: " + str(agent.mean_error) + "\n")                
-                if stop: 
-                    stdscr.addstr("\nMB surprise sm: " + str([agent.last_minibatch[i][2] for i in range(len(agent.last_minibatch))]) + "\n")   
-                    stdscr.addstr("\nMax surprise: " + str(np.max([agent.experience[i][5] for i in range(len(agent.experience))])) + "\n")   
-                    stop = False   
-                    stdscr.refresh()        
-                    time.sleep(5)  
+                stdscr.addstr("\nMean error: " + str(agent.mean_error) + "\n")  
+                stdscr.addstr("\nLosses: " + str(agent.losses) + "\n")                                
+                # if stop: 
+                #     stdscr.addstr("\nMB surprise sm: " + str([agent.last_minibatch[i][5] for i in range(len(agent.last_minibatch))]) + "\n")   
+                #     stdscr.addstr("\nMax surprise: " + str(np.max([agent.experience[i][5] for i in range(len(agent.experience))])) + "\n")   
+                #     stop = False   
+                #     stdscr.refresh()        
+                #     time.sleep(5)  
                 stdscr.refresh()
 
                 debugTimerStart = time.time()
 
                 #Get AI output
                 #Get proximity
-                state = get_state(snakes[0])
+                state = get_state(map, snakes[0])
 
                 if epsilon > randint(1, 30):
                     action = choice([0, 1, 2, 3])
                 else:
-                    #print(state)
                     action = agent.predict_action(state)
-                reward = calculate_reward(snakes[0].calculateNextPose(positionToKey(action, snakes[0])))
+                next_pose = snakes[0].calculateNextPose(positionToKey(action, snakes[0]))
+                reward = calculate_reward(map, snakes, next_pose)
                 
                 #Handle inputs
                 handleInput(snakes[0], positionToKey(action, snakes[0]))
                 #Update for map related thingz
                 map.update()
                 
-                new_state = get_state(snakes[0])
+                new_state = get_state(map, snakes[0])
                 dead = snakes[0].dead
                 
                 agent.store_experience(state, action, reward, new_state, dead)

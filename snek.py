@@ -27,10 +27,11 @@ class Snake:
     def getControls(self):
         return [self.up, self.down, self.left, self.right]
 
-    def setAesthetics(self, number, string, color):
+    def setAesthetics(self, number, string, color, head_color = None):
         self.number = number
         self.string = string
         self.color = color
+        self.head_color = head_color
 
     def registerInput(self, input):
         if(input == self.up or input == self.right or input == self.left or input == self.down):
