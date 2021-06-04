@@ -4,12 +4,8 @@ from art import *
 import os
 import time
 import curses
-import math
 import argparse as ap
 from snek import Snake
-from field import Field, distance
-import fruits as frt
-import importlib
 from random import randrange
 from NN.deepq import *
 from utils import *
@@ -198,9 +194,9 @@ while gen <= args.games or args.games == 0:
             #TODO: Do thing with dead snakes
             #deadSnakes = []
             
-            agent = DQN([122, 90, 90, 70, 4], [leaky_relu, leaky_relu, leaky_relu, linear], [he_init, he_init, he_init, zero_init])
+            agent = KerasDQN([122, 90, 90, 70, 4], [leaky_relu, leaky_relu, leaky_relu, linear], [he_init, he_init, he_init, zero_init])
 
-            games, moves = agent.load_from_file("NN/" + args.map + "_dqn.npy")
+            games, moves = agent.load_from_file("NN/" + args.map + "_keras")
                 
             epsilon = max(40 - games, 2)
             stop = False
@@ -216,14 +212,14 @@ while gen <= args.games or args.games == 0:
                 stdscr.addstr("Loop lag: " + str(debugTimerEnd - debugTimerStart - map.refreshRate))
                 stdscr.addstr("\nGame: " + str(games))
                 stdscr.addstr("\nMove: " + str(moves) + "\n")
-                stdscr.addstr("\nMean error: " + str(agent.mean_error) + "\n")  
-                stdscr.addstr("\nLosses: " + str(agent.losses) + "\n")                                
-                # if stop: 
-                #     stdscr.addstr("\nMB surprise sm: " + str([agent.last_minibatch[i][5] for i in range(len(agent.last_minibatch))]) + "\n")   
-                #     stdscr.addstr("\nMax surprise: " + str(np.max([agent.experience[i][5] for i in range(len(agent.experience))])) + "\n")   
-                #     stop = False   
-                #     stdscr.refresh()        
-                #     time.sleep(5)  
+                #stdscr.addstr("\nMean error: " + str(agent.mean_error) + "\n")  
+                #stdscr.addstr("\nLosses: " + str(agent.losses) + "\n")                                
+                if stop: 
+                    # stdscr.addstr("\nMB surprise sm: " + str([agent.last_minibatch[i][5] for i in range(len(agent.last_minibatch))]) + "\n")   
+                    # stdscr.addstr("\nMax surprise: " + str(np.max([agent.experience[i][5] for i in range(len(agent.experience))])) + "\n")   
+                    stop = False   
+                    # stdscr.refresh()        
+                    #time.sleep(5)  
                 stdscr.refresh()
 
                 debugTimerStart = time.time()
@@ -250,19 +246,22 @@ while gen <= args.games or args.games == 0:
                 agent.store_experience(state, action, reward, new_state, dead)
                 moves += 1
                 
-                if(moves % 16 == 0):
+                if(moves % 8 == 0):
                     agent.train()
                     stop=True
                     
-                if(moves % 120 == 0):
+                if(moves % 350 == 0):
                     agent.update_target_model()
 
                 time.sleep(args.refresh)
 
             #Save the net
             games += 1
-            data = np.array([agent.main_model.nn, agent.experience, games, moves])
-            np.save("NN/" + args.map + "_dqn.npy", data)
+            #data = np.array([agent.main_model.nn, agent.experience, games, moves])
+            #np.save("NN/" + args.map + "_dqn.npy", data)
+            
+            data = np.array([agent.experience, games, moves])
+            agent.save_to_file("NN/" + args.map + "_keras", data)
             time.sleep(2 * args.refresh)
 
 

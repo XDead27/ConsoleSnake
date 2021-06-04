@@ -1,4 +1,3 @@
-import math
 import curses
 import numpy as np
 from field import distance

@@ -5,12 +5,8 @@ import os
 import time
 import curses
 import argparse as ap
-
 from numpy import dot
 from snek import Snake
-from field import Field
-import fruits as frt
-import importlib
 from random import choice, randrange
 from utils import *
 from NN.deepq import *
