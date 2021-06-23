@@ -10,6 +10,7 @@ class Snake:
         self.dead = False
         self.name = ''
         self.additionalScore = 0
+        self.moves_from_last_fruit = 0
 
     def getScore(self):
         return self.additionalScore + 50 * self.length

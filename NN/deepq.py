@@ -125,37 +125,43 @@ from tensorflow.keras import layers
 from tensorflow import keras
 import tensorflow as tf
 
+tf.get_logger().setLevel('INFO')
+
 class KerasDQN:
     minibatch_size=8
     
     def __init__(self, layers_dimensions = None, layer_activ_funcs = None, layer_init_funcs = None):
-        #model = Sequential()
-        # model.add(Dense(layers_dimensions[1], input_dim=layers_dimensions[0], activation='relu'))
-        # for x in layers_dimensions[2:-1]:
-        #     model.add(Dense(x, activation='relu'))
-        # model.add(Dense(layers_dimensions[-1], activation='linear'))
-        # self.main_model = model.compile(optimizer='adam', loss='huber_loss')
         self.main_model = self.create_q_model()
         self.target_model = self.create_q_model()
         self.update_target_model()
         
         #Experience replay
         self.experience = deque([])
-        self.max_experience = 1000
-        self.gamma = 0.05
-        self.learning_rate = 0.0025
+        self.max_experience = 9000
+        self.gamma = 0.7
+        self.learning_rate = 0.0003
         
         #Have no clue
         self.loss_function = keras.losses.Huber()
         self.optimizer = keras.optimizers.Adam(learning_rate=self.learning_rate, clipnorm=1.0)
         
+        #Debug
+        self.mean_error = 0.0
+        self.losses = []
+        self.last_minibatch = []
+        
     def create_q_model(self):
-        inputs = layers.Input(shape=(122,))
+        inputs = layers.Input(shape=(122, ))
 
         layer1 = layers.Dense(110, activation="relu")(inputs)
         layer2 = layers.Dense(90, activation="relu")(layer1)
         
-        action = layers.Dense(4, activation="linear")(layer2)
+        #layer1 = layers.Conv2D(32, kernel_size=3, activation="relu", input_shape=(11, 11, 1))(inputs)
+        #layer2 = layers.Conv2D(16, kernel_size=3, activation="relu")(layer1)
+        #layer3 = layers.Flatten()(layer2)
+        layer3 = layers.Dense(90, activation='relu')(layer2)
+        
+        action = layers.Dense(4, activation="linear")(layer3)
 
         return keras.Model(inputs=inputs, outputs=action)
     
@@ -190,7 +196,7 @@ class KerasDQN:
         self.target_model.set_weights(self.main_model.get_weights())
         
     def train(self):
-        states, actions, rewards, next_states, dead = self.get_minibatch(self.minibatch_size)
+        states, actions, rewards, next_states, dead, indices = self.get_minibatch(self.minibatch_size)
         #Pls understand tensors and why the fuck you use them
         dead = tf.convert_to_tensor([float(x) for x in dead])
         
@@ -212,18 +218,31 @@ class KerasDQN:
         #Backprop
         grads = tape.gradient(loss, self.main_model.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.main_model.trainable_variables))
+        
+        #Restore experiences
+        new_surprises = abs(updated_q_values - q_action)
+
+        #Makes sure we are not storing the same experience twice
+        used_indices = []
+        for idx in range(len(states)):
+            if indices[idx] in used_indices:
+                continue
+            
+            self.store_experience(states[idx], actions[idx], rewards[idx], next_states[idx], dead[idx], new_surprises[idx])
+            used_indices.append(indices[idx])
+    
+        #Debug
+        #self.losses = loss
+        self.mean_error = loss
 
     def store_experience(self, state, action, reward, next_state, dead, surprise = None):
         if len(self.experience) > self.max_experience:
             self.experience.pop()
         
-        if surprise == None: 
+        if surprise == None:
             #Calculate surprise factor
             future_reward = self.predict_action(next_state)
-            if dead:
-                target_output = reward
-            else:
-                target_output = reward + self.gamma * self.predict_without_tensor(next_state, target=True)[future_reward]
+            target_output = reward + self.gamma * tf.convert_to_tensor(future_reward, dtype=float) * tf.convert_to_tensor(float(dead))
             predicted_output = max(self.predict_without_tensor(state))
             surprise = abs(target_output - predicted_output)
                         
@@ -251,6 +270,6 @@ class KerasDQN:
         for idx in sorted(dict.fromkeys(indices), reverse=True):
             del self.experience[idx]
                     
-        return np.array(states), np.array(actions), np.array(rewards), np.array(next_states), np.array(dead)
+        return np.array(states), np.array(actions), np.array(rewards), np.array(next_states), np.array(dead), np.array(indices)
 
 # hank = DQN([24, 12, 12, 4], [leaky_relu, leaky_relu, leaky_relu], [he_init, he_init, he_init])

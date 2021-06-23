@@ -37,28 +37,6 @@ def positionToKey(pos, snake):
         elif pos == 3:
             return snake.right
         
-def calculate_reward(map, snakes, pos):
-    if not (pos[0] in range(map.field.height) and pos[1] in range(map.field.width)):
-        return -1
-
-    numPos = map.field.getNumAt(pos)
-    if numPos == map.field.blank_number:
-        return 0
-
-    for f in map.fruitSpawners:
-        if isInRange(pos, f.spawnStart, f.spawnEnd):
-            for fruit in f.spawnedFruits:
-                if pos == fruit.start:
-                    return 1
-
-    for o in map.obstacles:
-        if numPos == o.number:
-            return -1
-
-    for snake in snakes:
-        if numPos == snake.number:
-            return -1
-        
 def get_state(map, snake):
         state = map.field.getProximity(snake, 5, True)
         

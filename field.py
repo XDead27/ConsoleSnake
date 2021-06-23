@@ -1,5 +1,5 @@
 import math
-from os import rename
+import numpy as np
 
 def distance(start, end):
     return math.sqrt((start[0] - end[0]) ** 2 + (start[1] - end[1]) ** 2)
@@ -181,7 +181,7 @@ class Field:
                     proximity.append(-2)
                 else:
                     proximity.append(self.map[x][y])
-
+                    
         return proximity
 
     def refreshDrawnMap(self, additional = []):

@@ -16,6 +16,8 @@ parser.add_argument("map", choices=['duel', 'survival', 'classic'], help="Map to
 parser.add_argument("-p", "--players", type=int, default=1, help="Population number")
 parser.add_argument("-r", "--refresh", type=float, default=0.0, required=False, help="This should be non zero if you wan see how they move")
 parser.add_argument("-g", "--games", type=int, default=0, required=False, help="How many games to run")
+parser.add_argument("--visual", action="store_true", help="Should the field be drawn")
+parser.add_argument("--demo", action="store_true", help="Demo conditions")
 parser.add_argument("--manual-inputs", action="store_true", help="Setup inputs manually for each snake")
 parser.add_argument("--manual-aesthetics", action="store_true", help="Setup aesthetics manually for each snake")
 
@@ -121,6 +123,7 @@ while gen <= args.games or args.games == 0:
     map.field.refresh()
 
     map.refreshRate = args.refresh
+    max_moves_from_last_fruit = 125
 
     def handleInput(s, input):
         boxLeft = s.registerInput(input)
@@ -137,9 +140,13 @@ while gen <= args.games or args.games == 0:
     def handlePosition(s):
         global fruitSpawner
         global field
+        global max_moves_from_last_fruit
         if not (s.head[0] in range(field.height) and s.head[1] in range(field.width)):
             s.dead = True
             return
+        
+        if (s.moves_from_last_fruit > max_moves_from_last_fruit and not args.demo):
+            s.dead = True
 
         numAtHead = field.getNumAt(s.head)
         if numAtHead == field.blank_number:
@@ -152,6 +159,7 @@ while gen <= args.games or args.games == 0:
                         fruit.doMagic(s, snakes, map)
                         f.spawnedFruits.remove(fruit)
                         field.shapes.remove(fruit)
+                        s.moves_from_last_fruit = 0
                         return
 
         for o in obstacles:
@@ -164,7 +172,7 @@ while gen <= args.games or args.games == 0:
                 (s if s.length < snake.length else snake).dead = True
             elif numAtHead == snake.number:
                 s.dead = True
-
+                                        
     def drawField(stdscr):
         for x in range(field.height):
             for y in range(field.width):
@@ -180,12 +188,37 @@ while gen <= args.games or args.games == 0:
                 stdscr.addstr(s.name + ': ')
             stdscr.addstr(str(s.getScore()) + '\n')
 
+    def calculate_reward(map, snake, snakes, pos):
+        if not (pos[0] in range(map.field.height) and pos[1] in range(map.field.width)):
+            return -1
+
+        numPos = map.field.getNumAt(pos)
+        if numPos == map.field.blank_number:
+            return 0
+
+        for f in map.fruitSpawners:
+            if isInRange(pos, f.spawnStart, f.spawnEnd):
+                for fruit in f.spawnedFruits:
+                    if pos == fruit.start:
+                        return 3
+
+        for o in map.obstacles:
+            if numPos == o.number:
+                return -1
+
+        for s in snakes:
+            if numPos == s.number:
+                return -1
+                
+        if snake.moves_from_last_fruit > max_moves_from_last_fruit:
+            return -1
 
     #Beware the MAIN
     def main(stdscr):
         global inputs
         global field
         global fruitSpawners
+        global moves_from_last_fruit
         try:
             debugTimerStart = time.time()
             moves = 0
@@ -198,7 +231,7 @@ while gen <= args.games or args.games == 0:
 
             games, moves = agent.load_from_file("NN/" + args.map + "_keras")
                 
-            epsilon = max(40 - games, 2)
+            epsilon = max(40 - games, 0)
             stop = False
                 
             #Big loop
@@ -207,19 +240,21 @@ while gen <= args.games or args.games == 0:
                 
                 #Clean and draw field thingy
                 stdscr.clear()
-                drawField(stdscr)
-                displayScore(stdscr)
+                if args.visual:
+                    drawField(stdscr)
+                    displayScore(stdscr)
                 stdscr.addstr("Loop lag: " + str(debugTimerEnd - debugTimerStart - map.refreshRate))
                 stdscr.addstr("\nGame: " + str(games))
                 stdscr.addstr("\nMove: " + str(moves) + "\n")
-                #stdscr.addstr("\nMean error: " + str(agent.mean_error) + "\n")  
+                stdscr.addstr("\nMove from last fruit: " + str(snakes[0].moves_from_last_fruit) + "\n")
+                stdscr.addstr("\nMean error: " + str(agent.mean_error) + "\n")  
                 #stdscr.addstr("\nLosses: " + str(agent.losses) + "\n")                                
-                if stop: 
-                    # stdscr.addstr("\nMB surprise sm: " + str([agent.last_minibatch[i][5] for i in range(len(agent.last_minibatch))]) + "\n")   
-                    # stdscr.addstr("\nMax surprise: " + str(np.max([agent.experience[i][5] for i in range(len(agent.experience))])) + "\n")   
-                    stop = False   
-                    # stdscr.refresh()        
-                    #time.sleep(5)  
+                # if stop: 
+                #     stdscr.addstr("\nMB surprise sm: " + str([agent.last_minibatch[i][5] for i in range(len(agent.last_minibatch))]) + "\n")   
+                #     stdscr.addstr("\nMax surprise: " + str(np.max([agent.experience[i][5] for i in range(len(agent.experience))])) + "\n")   
+                #     stop = False   
+                #     stdscr.refresh()        
+                #     time.sleep(5)  
                 stdscr.refresh()
 
                 debugTimerStart = time.time()
@@ -228,12 +263,12 @@ while gen <= args.games or args.games == 0:
                 #Get proximity
                 state = get_state(map, snakes[0])
 
-                if epsilon > randint(1, 30):
+                if (epsilon > randint(1, 30) and not args.demo):
                     action = choice([0, 1, 2, 3])
                 else:
                     action = agent.predict_action(state)
                 next_pose = snakes[0].calculateNextPose(positionToKey(action, snakes[0]))
-                reward = calculate_reward(map, snakes, next_pose)
+                reward = calculate_reward(map, snakes[0], snakes, next_pose)
                 
                 #Handle inputs
                 handleInput(snakes[0], positionToKey(action, snakes[0]))
@@ -243,26 +278,29 @@ while gen <= args.games or args.games == 0:
                 new_state = get_state(map, snakes[0])
                 dead = snakes[0].dead
                 
-                agent.store_experience(state, action, reward, new_state, dead)
+                if not args.demo:
+                    agent.store_experience(state, action, reward, new_state, dead)
                 moves += 1
                 
-                if(moves % 8 == 0):
-                    agent.train()
-                    stop=True
-                    
-                if(moves % 350 == 0):
-                    agent.update_target_model()
+                for snake in snakes:
+                    snake.moves_from_last_fruit += 1
+                
+                if not args.demo:
+                    if(moves % 8 == 0):
+                        agent.train()
+                        stop=True
+                        
+                    if(moves % 1100 == 0):
+                        agent.update_target_model()
 
                 time.sleep(args.refresh)
 
             #Save the net
             games += 1
-            #data = np.array([agent.main_model.nn, agent.experience, games, moves])
-            #np.save("NN/" + args.map + "_dqn.npy", data)
             
-            data = np.array([agent.experience, games, moves])
+            data = np.array([agent.experience, games, moves], dtype=object)
             agent.save_to_file("NN/" + args.map + "_keras", data)
-            time.sleep(2 * args.refresh)
+            #time.sleep(20)
 
 
         except KeyboardInterrupt:
