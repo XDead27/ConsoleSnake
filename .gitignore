@@ -3,3 +3,4 @@ input_test.py
 *.npy
 *.save
 classic_keras.model/
+.vscode/
