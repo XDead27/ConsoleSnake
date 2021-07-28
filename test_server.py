@@ -4,18 +4,19 @@ import sys
 import socket
 import selectors
 import traceback
+import time
 
-import libserver
+import Networking.libserver as libserver
 
 sel = selectors.DefaultSelector()
 
 
 def accept_wrapper(sock):
     conn, addr = sock.accept()  # Should be ready to read
-    print("accepted connection from", addr)
+    print("\033[31m" + "accepted connection" + "\033[0m" + " from", addr, "\n")
     conn.setblocking(False)
-    message = libserver.Message(sel, conn, addr)
-    sel.register(conn, selectors.EVENT_READ, data=message)
+    prot_conn = libserver.Connection(sel, conn, addr)
+    sel.register(conn, selectors.EVENT_READ, data=prot_conn)
 
 
 if len(sys.argv) != 3:
@@ -34,20 +35,20 @@ sel.register(lsock, selectors.EVENT_READ, data=None)
 
 try:
     while True:
-        events = sel.select(timeout=None)
+        events = sel.select(timeout=1)
         for key, mask in events:
             if key.data is None:
                 accept_wrapper(key.fileobj)
             else:
-                message = key.data
+                prot_conn = key.data
                 try:
-                    message.process_events(mask)
+                    prot_conn.process_events(mask)
                 except Exception:
                     print(
-                        "main: error: exception for",
-                        f"{message.addr}:\n{traceback.format_exc()}",
+                        "\033[32m" + "main: error: exception for" + "\033[0m",
+                        f"{prot_conn.addr}:\n{traceback.format_exc()}",
                     )
-                    message.close()
+                    prot_conn.close()
 except KeyboardInterrupt:
     print("caught keyboard interrupt, exiting")
 finally:

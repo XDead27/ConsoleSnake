@@ -5,15 +5,15 @@ import io
 import struct
 
 
-class Message:
-    def __init__(self, selector, sock, addr, request):
+class Connection:
+    def __init__(self, selector, sock, addr):
         self.selector = selector
         self.sock = sock
         self.addr = addr
-        self.request = request
+        self.request = None
         self._recv_buffer = b""
         self._send_buffer = b""
-        self._request_queued = False
+        self._has_request = False
         self._jsonheader_len = None
         self.jsonheader = None
         self.response = None
@@ -36,7 +36,8 @@ class Message:
             data = self.sock.recv(4096)
         except BlockingIOError:
             # Resource temporarily unavailable (errno EWOULDBLOCK)
-            pass
+            raise RuntimeError("Resource temporarily unavailable.")
+            # pass
         else:
             if data:
                 self._recv_buffer += data
@@ -110,12 +111,12 @@ class Message:
                 self.process_response()
 
     def write(self):
-        if not self._request_queued:
+        if self._has_request:
             self.queue_request()
 
         self._write()
 
-        if self._request_queued:
+        if not self._has_request:
             if not self._send_buffer:
                 # Set selector to listen for read events, we're done writing.
                 self._set_selector_events_mask("r")
@@ -141,6 +142,11 @@ class Message:
             # Delete reference to socket object for garbage collection
             self.sock = None
 
+    def place_request(self, request):
+        self.request = request
+        self._has_request = True
+        self._set_selector_events_mask("w")
+
     def queue_request(self):
         content = self.request["content"]
         content_type = self.request["type"]
@@ -159,7 +165,7 @@ class Message:
             }
         message = self._create_message(**req)
         self._send_buffer += message
-        self._request_queued = True
+        self._has_request = False
 
     def process_protoheader(self):
         hdrlen = 2
@@ -204,5 +210,13 @@ class Message:
                 self.addr,
             )
             self._process_response_binary_content()
-        # Close when response has been processed
-        self.close()
+        # Switch to write again when response has been processed
+        self.refresh_connection()
+
+    def refresh_connection(self):
+        self._recv_buffer = b""
+        self._send_buffer = b""
+        self._has_request = False
+        self._jsonheader_len = None
+        self.jsonheader = None
+        self.response = None

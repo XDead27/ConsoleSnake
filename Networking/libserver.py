@@ -11,7 +11,7 @@ request_search = {
 }
 
 
-class Message:
+class Connection:
     def __init__(self, selector, sock, addr):
         self.selector = selector
         self.sock = sock
@@ -41,7 +41,8 @@ class Message:
             data = self.sock.recv(4096)
         except BlockingIOError:
             # Resource temporarily unavailable (errno EWOULDBLOCK)
-            pass
+            raise RuntimeError("Resource temporarily unavailable.")
+            # pass
         else:
             if data:
                 self._recv_buffer += data
@@ -50,7 +51,7 @@ class Message:
 
     def _write(self):
         if self._send_buffer:
-            print("sending", repr(self._send_buffer), "to", self.addr)
+            print("\033[31m" + "sending" + "\033[0m", repr(self._send_buffer), "to", self.addr, "\n")
             try:
                 # Should be ready to write
                 sent = self.sock.send(self._send_buffer)
@@ -59,9 +60,10 @@ class Message:
                 pass
             else:
                 self._send_buffer = self._send_buffer[sent:]
-                # Close when the buffer is drained. The response has been sent.
+                # Listen when the buffer has been drained. The response has been sent.
                 if sent and not self._send_buffer:
-                    self.close()
+                    self.refresh_connection()
+                    self._set_selector_events_mask("r")
 
     def _json_encode(self, obj, encoding):
         return json.dumps(obj, ensure_ascii=False).encode(encoding)
@@ -104,14 +106,14 @@ class Message:
         }
         return response
 
-    def _create_response_binary_content(self):
-        response = {
-            "content_bytes": b"First 10 bytes of request: "
-            + self.request[:10],
-            "content_type": "binary/custom-server-binary-type",
-            "content_encoding": "binary",
-        }
-        return response
+    # def _create_response_binary_content(self):
+    #     response = {
+    #         "content_bytes": b"First 10 bytes of request: "
+    #         + self.request[:10],
+    #         "content_type": "binary/custom-server-binary-type",
+    #         "content_encoding": "binary",
+    #     }
+    #     return response
 
     def process_events(self, mask):
         if mask & selectors.EVENT_READ:
@@ -121,7 +123,6 @@ class Message:
 
     def read(self):
         self._read()
-
         if self._jsonheader_len is None:
             self.process_protoheader()
 
@@ -141,7 +142,7 @@ class Message:
         self._write()
 
     def close(self):
-        print("closing connection to", self.addr)
+        print("\033[31m" + "closing connection to" + "\033[0m", self.addr)
         try:
             self.selector.unregister(self.sock)
         except Exception as e:
@@ -160,6 +161,11 @@ class Message:
         finally:
             # Delete reference to socket object for garbage collection
             self.sock = None
+
+    # def place_response(self, response):
+    # self.request = request
+    # self._has_request = True
+    # self._set_selector_events_mask("w")
 
     def process_protoheader(self):
         hdrlen = 2
@@ -194,7 +200,7 @@ class Message:
         if self.jsonheader["content-type"] == "text/json":
             encoding = self.jsonheader["content-encoding"]
             self.request = self._json_decode(data, encoding)
-            print("received request", repr(self.request), "from", self.addr)
+            print("\033[31m" + "received request" + "\033[0m", repr(self.request), "from", self.addr)
         else:
             # Binary or unknown content-type
             self.request = data
@@ -202,15 +208,21 @@ class Message:
                 f'received {self.jsonheader["content-type"]} request from',
                 self.addr,
             )
+        print(" ")
         # Set selector to listen for write events, we're done reading.
         self._set_selector_events_mask("w")
 
     def create_response(self):
         if self.jsonheader["content-type"] == "text/json":
             response = self._create_response_json_content()
-        else:
-            # Binary or unknown content-type
-            response = self._create_response_binary_content()
         message = self._create_message(**response)
         self.response_created = True
         self._send_buffer += message
+
+    def refresh_connection(self):
+        self._recv_buffer = b""
+        self._send_buffer = b""
+        self._jsonheader_len = None
+        self.jsonheader = None
+        self.request = None
+        self.response_created = False
