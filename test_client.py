@@ -4,19 +4,23 @@ import sys
 import socket
 import selectors
 import traceback
+# import curses
+
 
 import Networking.libclient as libclient
 
 sel = selectors.DefaultSelector()
 
+def process_response(content):
+    action = content.get("action")
+    value = content.get("value")
 
-def create_request(action, value):
-    return dict(
-        type="text/json",
-        encoding="utf-8",
-        content=dict(action=action, value=value),
-    )
-
+    if action == "notice":
+        print("\033[31m" + "I have handled the response!"+ "\033[0m" +" Here is the notice:", value.get("message"))
+        if value.get("input"):
+            print("With input: ", value.get("input"))
+    else:
+        print("\033[31m" + "Response is not a notice! It is"+ "\033[0m", action)
 
 def start_connection(host, port):
     addr = (host, port)
@@ -25,7 +29,7 @@ def start_connection(host, port):
     sock.setblocking(True)
     sock.connect_ex(addr)
     events = selectors.EVENT_READ | selectors.EVENT_WRITE
-    prot_conn = libclient.Connection(sel, sock, addr)
+    prot_conn = libclient.Connection(sel, sock, addr, response_handler=process_response)
     sel.register(sock, events, data=prot_conn)
     return prot_conn
 
@@ -46,14 +50,14 @@ prot_conn = start_connection(host, port)
 
 try:
     action, value = get_user_request()
-    request = create_request(action, value)
+    request = libclient.create_request(action, value)
     prot_conn.place_request(request)
     while True:
         events = sel.select(timeout=1)
         if not events:
             # Send a new request
             action, value = get_user_request()
-            request = create_request(action, value)
+            request = libclient.create_request(action, value)
             prot_conn.place_request(request)
         else:
             for key, mask in events:
