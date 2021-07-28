@@ -4,9 +4,9 @@ import json
 import io
 import struct
 
-def create_request(action, value):
+def create_request(action, value, type="text/json"):
     return dict(
-        type="text/json",
+        type=type,
         encoding="utf-8",
         content=dict(action=action, value=value),
     )
@@ -164,6 +164,12 @@ class Connection:
                 "content_type": content_type,
                 "content_encoding": content_encoding,
             }
+        else:
+            req = {
+                "content_bytes": content,
+                "content_type": content_type,
+                "content_encoding": content_encoding,
+            }
         message = self._create_message(**req)
         self._send_buffer += message
         self._has_request = False
@@ -202,8 +208,10 @@ class Connection:
         if self.jsonheader["content-type"] == "text/json":
             encoding = self.jsonheader["content-encoding"]
             self.response = _json_decode(data, encoding)
-            print("received response", repr(self.response), "from", self.addr)
-            self._response_handler(self.response)
+        else:
+            self.response = data
+        print("received response", repr(self.response), "from", self.addr)
+        self._response_handler(self.response)
 
         # Switch to write again when response has been processed
         self.refresh_connection()

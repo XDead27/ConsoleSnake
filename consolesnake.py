@@ -190,7 +190,6 @@ def getInput(stdscr):
         a = stdscr.getch()
         if a == -1:
             break
-        isOk = False
         for x in range(len(acceptedInputs)):
             if (not a in usedInputs) and (a in acceptedInputs[x]):
                 usedInputs.extend(acceptedInputs[x][:])
@@ -217,7 +216,6 @@ def handleInput(s, input):
             if not x == s.head: field.clearTempNumAt(x)
 
 def handlePosition(s):
-    global fruitSpawner
     global field
     numAtHead = field.getNumAt(s.head)
 

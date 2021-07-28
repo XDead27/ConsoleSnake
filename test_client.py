@@ -4,12 +4,21 @@ import sys
 import socket
 import selectors
 import traceback
-# import curses
-
+import pickle, codecs
+from art import text2art
 
 import Networking.libclient as libclient
 
 sel = selectors.DefaultSelector()
+
+# Debug
+def drawField(field):
+    for x in range(field.height):
+        to_print = ""
+        for y in range(field.width):
+            to_print += field.drawnMap[x][y][0]
+        print(text2art(to_print, font='cjk'))
+
 
 def process_response(content):
     action = content.get("action")
@@ -19,6 +28,9 @@ def process_response(content):
         print("\033[31m" + "I have handled the response!"+ "\033[0m" +" Here is the notice:", value.get("message"))
         if value.get("input"):
             print("With input: ", value.get("input"))
+    elif action == "update":
+        field = pickle.loads(codecs.decode(value.encode(), "base64"))
+        drawField(field)
     else:
         print("\033[31m" + "Response is not a notice! It is"+ "\033[0m", action)
 
@@ -56,7 +68,9 @@ try:
         events = sel.select(timeout=1)
         if not events:
             # Send a new request
-            action, value = get_user_request()
+            # action, value = get_user_request()
+            action = "query"
+            value = ""
             request = libclient.create_request(action, value)
             prot_conn.place_request(request)
         else:

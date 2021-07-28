@@ -4,17 +4,11 @@ import json
 import io
 import struct
 
-request_search = {
-    "morpheus": "Follow the white rabbit. \U0001f430",
-    "ring": "In the caves beneath the Misty Mountains. \U0001f48d",
-    "\U0001f436": "\U0001f43e Playing ball! \U0001f3d0",
-}
-
-def create_request(action, value):
+def create_request(action, value, type="text/json", encoding="utf-8"):
     return dict(
-        type="text/json",
-        encoding="utf-8",
-        content=dict(action=action, value=value),
+        type=type,
+        encoding=encoding,
+        content=dict(action=action, value=value) if type == "text/json" else bytes(action + str(value), encoding="utf-8"),
     )
 
 def _json_encode(obj, encoding):
@@ -239,6 +233,12 @@ class Connection:
         if content_type == "text/json":
             response = {
                 "content_bytes": _json_encode(content, content_encoding),
+                "content_type": content_type,
+                "content_encoding": content_encoding,
+            }
+        else:
+            response = {
+                "content_bytes": content,
                 "content_type": content_type,
                 "content_encoding": content_encoding,
             }

@@ -4,28 +4,37 @@ import sys
 import socket
 import selectors
 import traceback
+import curses
+import pickle, codecs
 
 import Networking.libserver as libserver
 import Maps.classic
 
 sel = selectors.DefaultSelector()
-start = False
-# map = Maps.classic.Classic()
-# field = map.field
+
+stdscr = curses.initscr()
+curses.nocbreak()
+curses.start_color()
+
+map = Maps.classic.Classic()
+field = map.field
+
+# comment afterward
+curses.nocbreak()
+curses.endwin()
 
 def handle_request(content):
-    global start
     action = content.get("action")
-    value = content.get("value")
+    # value = content.get("value")
 
-    if action == "input":
-        print("\033[35m" + "Input is: " + "\033[0m", value)
-        response_value = {
-                "input": value,
-                "message": "Succesfully got your input!"
-            }
+    response_action = "notice"
+    response_type = "text/json"
+    response_encoding = "utf-8"
+
+    if action == "input" or action == "query":
+        response_action = "update"
+        response_value = codecs.encode(pickle.dumps(field), "base64").decode()
     elif action == "start":
-        start = True
         response_value = {
                 "message": "Succesfully started!"
             }
@@ -33,7 +42,8 @@ def handle_request(content):
         print("\033[35m" + "Unknown action!" + "\033[0m")
         response_value = {"message": "not a recognized action!"}
 
-    response = libserver.create_request("notice", response_value)
+    response = libserver.create_request(response_action, response_value, response_type, response_encoding)
+    print(response)
     return response
 
 def accept_wrapper(sock):
@@ -60,9 +70,6 @@ sel.register(lsock, selectors.EVENT_READ, data=None)
 try:
     while True:
         events = sel.select(timeout=1)
-
-        print(start)
-
         for key, mask in events:
             if key.data is None:
                 accept_wrapper(key.fileobj)
