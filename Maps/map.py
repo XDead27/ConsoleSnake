@@ -1,4 +1,4 @@
-from art import *
+from art import tprint, text2art
 import time
 import os
 import curses
@@ -13,13 +13,8 @@ class Map:
         self.spawnLocations = []
         self.refreshRate = 0.5
 
-    def displayTitle(self, name, font, stdscr):
-        tprint("You have chosen", font='thin')
-        tprint(name, font=font)
-        tprint("-----------")
-
-    def displayDetails(self, stdscr):
-        print("Types of fruits in this gamemode:\n")
+    def getDetails(self):
+        fruit_details = []
         alreadyMentioned = []
         for fs in self.fruitSpawners:
             name = fs.fruitType[0].__name__
@@ -27,29 +22,21 @@ class Map:
                 fruit = fs.fruitType[0]([0, 0])
                 char = fruit.string
                 desc = fruit.description
-                print(text2art(char, font='cjk') + "(" + name + ") - " + desc + "\n")
+
+                details = {}
+                details["name"] = name
+                details["char"] = char
+                details["description"] = desc
+
+                fruit_details.append(details)
                 alreadyMentioned.append(name)
+        return fruit_details
 
-    def askForParams(self, stdscr):
+    def getSpecificColors(self):
         pass
-
-    def countdown(self):
-        for x in range(3):
-            tprint(str(3 - x))
-            time.sleep(1)
-
-    def playIntro(self, name, font, stdscr):
-        try:
-            self.displayTitle(name, font, stdscr)
-            self.askForParams(stdscr)
-            self.countdown()
-
-        except KeyboardInterrupt:
-            tprint("...Weakling")
-            time.sleep(1)
-            curses.nocbreak()
-            curses.endwin()
-            os._exit(0)
+    
+    # def askForParams(self, stdscr):
+    #     pass
 
     def update(self):
         #Spawn thee fruits
@@ -58,3 +45,43 @@ class Map:
 
     def getRandomSpawnLocation(self, i):
         return self.spawnLocations[i]
+
+# Methods for displaying map info (client-side)
+def playIntro(map_name):
+    try:
+        displayTitle(map_name)
+        # TODO: Add this functionality
+        # askForParams(stdscr)
+        countdown()
+
+    except KeyboardInterrupt:
+        tprint("...Weakling")
+        time.sleep(1)
+        curses.nocbreak()
+        curses.endwin()
+        os._exit(0)
+
+# List of fonts for the map display (client-side)
+map_fonts = {
+    "classic": {"name":"CLASSIC", "font":"pawp"},
+    "duel": {"name":"DUEL", "font":"sub-zero"},
+    "survival": {"name":"Survival", "font":"defleppard"},
+    "dungeons": {"name":"Dungeons", "font":"amcrazor"}
+}
+
+def displayTitle(map_name):
+    name = map_fonts.get(map_name).get("name")
+    font = map_fonts.get(map_name).get("font")
+
+    tprint("You have chosen", font='thin')
+    tprint(name, font=font)
+    tprint("-----------")
+
+def countdown():
+    for x in range(3):
+        tprint(str(3 - x))
+        time.sleep(1)
+
+def displayDetails(fruit_details):
+    for details in fruit_details:
+        print(text2art(details['char'], font='cjk') + "(" + details['name'] + ") - " + details['description'] + "\n")

@@ -13,10 +13,6 @@ class Survival(Map):
     def __init__(self):
         super(Survival, self).__init__()
 
-        #Colors for our map
-        curses.init_pair(100, curses.COLOR_BLACK, curses.COLOR_BLACK)
-        curses.init_pair(101, curses.COLOR_WHITE, curses.COLOR_BLACK)
-
         self.field = Field(20, 20, 0, '  ')
         self.p1 = self.field.addPerimeter(20, 20, [0, 0], -1, 's', 101)
         self.obstacles.append(self.p1)
@@ -45,34 +41,39 @@ class Survival(Map):
         self.maxPlayers = 4
         self.spawnLocations = [[1, 1], [3, 3], [5, 5], [7, 7]]
 
-    def askForParams(self, stdscr):
-        super(Survival, self).askForParams(stdscr)
-        curses.flushinp()
-        curses.nocbreak()
-        stdscr.nodelay(False)
-        stdscr.addstr("Size (height): ")
-        stdscr.refresh()
-        h = stdscr.getstr(1, 0, 3).decode("utf-8")
-        stdscr.addstr("Size (width): ")
-        w = stdscr.getstr(3, 0, 3).decode("utf-8")
+    def getSpecificColors(self):
+        super(Survival, self).getSpecificColors() 
+        specific_colors = [
+            {"number": 100, "fg": "black", "bg": "black"},
+            {"number": 101, "fg": "white", "bg": "black"}
+        ]
+        return specific_colors
 
-        h = self.DEFAULT_SIZE if h == '' else int(h)
-        w = self.DEFAULT_SIZE if w == '' else int(w)
+    # def askForParams(self, stdscr):
+    #     super(Survival, self).askForParams(stdscr)
+    #     curses.flushinp()
+    #     curses.nocbreak()
+    #     stdscr.nodelay(False)
+    #     stdscr.addstr("Size (height): ")
+    #     stdscr.refresh()
+    #     h = stdscr.getstr(1, 0, 3).decode("utf-8")
+    #     stdscr.addstr("Size (width): ")
+    #     w = stdscr.getstr(3, 0, 3).decode("utf-8")
 
-        self.field.setDimensions(h + 1, w + 1)
-        self.field.reset()
-        self.field.shapes.remove(self.p1)
-        self.p1 = self.field.addPerimeter(h, w, [0, 0], -1, 's', 101)
-        self.field.refresh()
+    #     h = self.DEFAULT_SIZE if h == '' else int(h)
+    #     w = self.DEFAULT_SIZE if w == '' else int(w)
 
-        for fs in self.fruitSpawners:
-            fs.bindAreaToPerimeter(self.p1)
+    #     self.field.setDimensions(h + 1, w + 1)
+    #     self.field.reset()
+    #     self.field.shapes.remove(self.p1)
+    #     self.p1 = self.field.addPerimeter(h, w, [0, 0], -1, 's', 101)
+    #     self.field.refresh()
 
-        curses.cbreak()
-        stdscr.nodelay(True)
+    #     for fs in self.fruitSpawners:
+    #         fs.bindAreaToPerimeter(self.p1)
 
-    def playIntro(self, stdscr):
-        super(Survival, self).playIntro("Survival", "defleppard", stdscr)
+    #     curses.cbreak()
+    #     stdscr.nodelay(True)
 
     def clearObstacles(self):
         for x in self.coords:

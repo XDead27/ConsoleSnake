@@ -126,9 +126,5 @@ class Dungeons(Map):
         self.obstacles.append(start3)
         self.obstacles.append(start4)
 
-    def playIntro(self, stdscr):
-        super(Dungeons, self).playIntro("Dungeons", "amcrazor", stdscr)
-        self.createMap()
-
     def update(self):
         super(Dungeons, self).update()

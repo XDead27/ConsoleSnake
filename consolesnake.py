@@ -7,6 +7,7 @@ import argparse as ap
 from numpy import dot
 from Resources.snek import Snake
 from random import choice, randrange
+from Maps.map import playIntro, displayDetails
 import Resources.utils as utils
 from NN.deepq import DQN, leaky_relu, linear, he_init, zero_init
 
@@ -47,9 +48,13 @@ m = getattr(m, args.map)
 
 map = getattr(m, args.map.capitalize())()
 
+for color in map.getSpecificColors():
+    curses.init_pair(color['number'], utils.parseColor(color['fg']), utils.parseColor(color['bg']))
+
 if args.details:
     endCurse()
-    map.displayDetails(stdscr)
+    details = map.getDetails()
+    displayDetails(details)
     os._exit(0)
 
 if args.players + args.computers > map.maxPlayers:
@@ -168,7 +173,7 @@ inputs = []
 curses.cbreak()
 stdscr.nodelay(True)
 
-map.playIntro(stdscr)
+playIntro(args.map)
 
 map.refreshRate = args.refresh
 

@@ -12,10 +12,6 @@ class Classic(Map):
     def __init__(self):
         super(Classic, self).__init__()
 
-        #Colors for our map
-        curses.init_pair(100, curses.COLOR_BLACK, curses.COLOR_BLACK)
-        curses.init_pair(101, curses.COLOR_WHITE, curses.COLOR_BLACK)
-
         self.DEFAULT_SIZE = 20
 
         self.field = Field(self.DEFAULT_SIZE + 1, self.DEFAULT_SIZE + 1, 0, '  ')
@@ -35,32 +31,37 @@ class Classic(Map):
         self.maxPlayers = 2
         self.spawnLocations = [[1, 1], [3, 3], [5, 5], [7, 7], [9, 5], [11, 3], [13, 1], [18, 18], [11, 9], [7, 13]]
 
-    def askForParams(self, stdscr):
-        super(Classic, self).askForParams(stdscr)
-        curses.flushinp()
-        curses.nocbreak()
-        stdscr.nodelay(False)
-        stdscr.addstr("Size (height): ")
-        stdscr.refresh()
-        h = stdscr.getstr(1, 0, 3).decode("utf-8")
-        stdscr.addstr("Size (width): ")
-        w = stdscr.getstr(3, 0, 3).decode("utf-8")
+    def getSpecificColors(self):
+        super(Classic, self).getSpecificColors() 
+        specific_colors = [
+            {"number": 100, "fg": "black", "bg": "black"},
+            {"number": 101, "fg": "white", "bg": "black"}
+        ]
+        return specific_colors
 
-        h = self.DEFAULT_SIZE if h == '' else int(h)
-        w = self.DEFAULT_SIZE if w == '' else int(w)
+    # def askForParams(self, stdscr):
+    #     super(Classic, self).askForParams(stdscr)
+    #     curses.flushinp()
+    #     curses.nocbreak()
+    #     stdscr.nodelay(False)
+    #     stdscr.addstr("Size (height): ")
+    #     stdscr.refresh()
+    #     h = stdscr.getstr(1, 0, 3).decode("utf-8")
+    #     stdscr.addstr("Size (width): ")
+    #     w = stdscr.getstr(3, 0, 3).decode("utf-8")
 
-        self.field.setDimensions(h + 1, w + 1)
-        self.field.reset()
-        self.field.shapes.remove(self.p1)
-        self.p1 = self.field.addPerimeter(h, w, [0, 0], -1, 's', 101)
-        self.fs1.bindAreaToPerimeter(self.p1)
-        self.field.refresh()
+    #     h = self.DEFAULT_SIZE if h == '' else int(h)
+    #     w = self.DEFAULT_SIZE if w == '' else int(w)
 
-        curses.cbreak()
-        stdscr.nodelay(True)
+    #     self.field.setDimensions(h + 1, w + 1)
+    #     self.field.reset()
+    #     self.field.shapes.remove(self.p1)
+    #     self.p1 = self.field.addPerimeter(h, w, [0, 0], -1, 's', 101)
+    #     self.fs1.bindAreaToPerimeter(self.p1)
+    #     self.field.refresh()
 
-    def playIntro(self, stdscr):
-        super(Classic, self).playIntro("CLASSIC", "pawp", stdscr)
+    #     curses.cbreak()
+    #     stdscr.nodelay(True)
 
     def update(self):
         super(Classic, self).update()

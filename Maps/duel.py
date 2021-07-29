@@ -12,10 +12,6 @@ class Duel(Map):
     def __init__(self):
         super(Duel, self).__init__()
 
-        #Colors for our map
-        curses.init_pair(100, curses.COLOR_BLACK, curses.COLOR_BLACK)
-        curses.init_pair(101, curses.COLOR_WHITE, curses.COLOR_BLACK)
-
         self.field = Field(17, 38, 0, '  ')
         self.p1 = self.field.addPerimeter(8, 8, [0, 0], -1, 's', 101)
         self.p2 = self.field.addPerimeter(8, 8, [0, 17], -1, 's', 101)
@@ -73,8 +69,13 @@ class Duel(Map):
         self.maxPlayers = 2
         self.spawnLocations = [[1, 1], [1, 18]]
 
-    def playIntro(self, stdscr):
-        super(Duel, self).playIntro("Duel", "sub-zero", stdscr)
+    def getSpecificColors(self):
+        super(Duel, self).getSpecificColors() 
+        specific_colors = [
+            {"number": 100, "fg": "black", "bg": "black"},
+            {"number": 101, "fg": "white", "bg": "black"}
+        ]
+        return specific_colors
 
     def incrementPerimeters(self):
         if self.p1.width + self.p1.position[1] < self.field.width and self.p1.height + self.p1.position[0] < self.field.height and \
