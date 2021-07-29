@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
-from art import *
-import os
-import time
-import curses
+from art import text2art, tprint
+import curses, time, os
+from collections import deque
 import argparse as ap
 from numpy import dot
-from snek import Snake
+from Resources.snek import Snake
 from random import choice, randrange
-from utils import *
-from NN.deepq import *
+import Resources.utils as utils
+from NN.deepq import DQN, leaky_relu, linear, he_init, zero_init
 
 #Parse flags and arguments
 parser = ap.ArgumentParser(description='Snek gaem with frends :>')
@@ -98,8 +97,8 @@ def setupAesthetics(name, i):
     stdscr.addstr("\nOne more thing. The background if it's not too much to ask... ")
     bg = stdscr.getstr().decode("utf-8")
 
-    curses.init_pair(i+1, parseColor(fg), parseColor(bg))
-    curses.init_pair(200 + i + 1, parseColor(fg), parseColor(fg))
+    curses.init_pair(i+1, utils.parseColor(fg), utils.parseColor(bg))
+    curses.init_pair(200 + i + 1, utils.parseColor(fg), utils.parseColor(fg))
 
     aesthetics.append(i+1)
     aesthetics.append(200 + i + 1)
@@ -151,8 +150,8 @@ for i in range(args.computers):
     
     #random aesthetics -- yes it is indeed a mess
     fg, bg = choice(['green', 'white', 'black', 'magenta', 'cyan']), choice(['green', 'white', 'black', 'magenta', 'cyan'])
-    curses.init_pair(map.maxPlayers - i + 1, parseColor(fg), parseColor(bg))
-    curses.init_pair(200 + map.maxPlayers - i + 1, parseColor(fg), parseColor(fg))
+    curses.init_pair(map.maxPlayers - i + 1, utils.parseColor(fg), utils.parseColor(bg))
+    curses.init_pair(200 + map.maxPlayers - i + 1, utils.parseColor(fg), utils.parseColor(fg))
     snake.setAesthetics(99 + map.maxPlayers - i, choice(['o', 'h', 'b', 'l', 'd']), map.maxPlayers - i + 1, 200 + map.maxPlayers - i + 1)
     comp_snakes.append(snake)
     stdscr.clear()
@@ -223,7 +222,7 @@ def handlePosition(s):
         return
 
     for f in fruitSpawners:
-        if isInRange(s.head, f.spawnStart, f.spawnEnd):
+        if utils.isInRange(s.head, f.spawnStart, f.spawnEnd):
             for fruit in f.spawnedFruits:
                 if s.head == fruit.start:
                     fruit.doMagic(s, snakes, map)
@@ -310,12 +309,12 @@ def main(stdscr):
             #Get states
             states = []
             for cs in comp_snakes:
-                states.append(get_state(map, cs))
+                states.append(utils.get_state(map, cs))
             
             #Get computer input
             for i in range(len(agents)):
                 action = agent.predict_action(states[i])
-                handleInput(comp_snakes[i], positionToKey(action, comp_snakes[i]))
+                handleInput(comp_snakes[i], utils.positionToKey(action, comp_snakes[i]))
 
             #Get player input
             getInput(stdscr)

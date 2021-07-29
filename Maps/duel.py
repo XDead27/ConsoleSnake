@@ -4,8 +4,8 @@ import sys
 import curses
 sys.path.insert(1, '/home/mrxdead/Documents/Projects/ConsoleSnake')
 from Maps.map import Map
-from field import Field
-import fruits as frt
+from Resources.field import Field
+import Resources.fruits as frt
 
 
 class Duel(Map):

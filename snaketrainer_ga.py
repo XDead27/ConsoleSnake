@@ -6,9 +6,9 @@ import time
 import curses
 import math
 import argparse as ap
-from snek import Snake
-from field import Field
-import fruits as frt
+from Resources.snek import Snake
+from Resources.field import Field
+import Resources.fruits as frt
 import importlib
 from random import randrange
 from NN import ga, nn

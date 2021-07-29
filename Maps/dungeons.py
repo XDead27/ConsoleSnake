@@ -7,9 +7,9 @@ import math
 from random import randrange
 sys.path.insert(1, '/home/mrxdead/Documents/Projects/ConsoleSnake')
 from Maps.map import Map
-from field import Field, Perimeter
-import fruits as frt
-from utils import isInRange
+from Resources.field import Field, Perimeter
+import Resources.fruits as frt
+from Resources.utils import isInRange
 
 ##This has to be the hardest shit to do jesus christ
 #A procedurally generated map on a field that is as big as possible

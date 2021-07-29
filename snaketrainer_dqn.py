@@ -5,10 +5,10 @@ import os
 import time
 import curses
 import argparse as ap
-from snek import Snake
+from Resources.snek import Snake
 from random import randrange
 from NN.deepq import *
-from utils import *
+from Resources.utils import *
 
 #Parse flags and arguments
 parser = ap.ArgumentParser(description='Train snaek. Majeek!')

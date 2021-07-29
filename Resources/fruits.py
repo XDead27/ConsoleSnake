@@ -1,6 +1,6 @@
 from random import randrange
 import random
-from field import Segment, Perimeter
+from Resources.field import Segment, Perimeter
 
 class FruitSpawner():
     def __init__(self, fruitType):

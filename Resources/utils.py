@@ -1,6 +1,6 @@
 import curses
 import numpy as np
-from field import distance
+from Resources.field import distance
 
 def parseColor(color):
     color = color.lower()
@@ -58,8 +58,8 @@ def get_state(map, snake):
         state.append(fruit_sine)
         return state
     
-def print_state(stdscr, snake):
-    state = get_state(snake)
+def print_state(stdscr, snake, map):
+    state = get_state(map, snake)
     
     stdscr.addstr("\nSnake vision:\n")
     

@@ -64,7 +64,8 @@ class Connection:
 
     def _write(self):
         if self._send_buffer:
-            print("sending", repr(self._send_buffer), "to", self.addr)
+            # Telemetry
+            # print("sending", repr(self._send_buffer), "to", self.addr)
             try:
                 # Should be ready to write
                 sent = self.sock.send(self._send_buffer)
@@ -210,7 +211,8 @@ class Connection:
             self.response = _json_decode(data, encoding)
         else:
             self.response = data
-        print("received response", repr(self.response), "from", self.addr)
+        # Telemetry
+        # print("received response", repr(self.response), "from", self.addr)
         self._response_handler(self.response)
 
         # Switch to write again when response has been processed
