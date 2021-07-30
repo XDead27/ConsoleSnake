@@ -9,7 +9,6 @@ from Resources.snek import Snake
 from random import choice, randrange
 from Maps.map import playIntro, displayDetails
 import Resources.utils as utils
-from NN.deepq import DQN, leaky_relu, linear, he_init, zero_init
 
 #Parse flags and arguments
 parser = ap.ArgumentParser(description='Snek gaem with frends :>')
@@ -23,6 +22,9 @@ parser.add_argument("--manual-inputs", action="store_true", help="Setup inputs m
 parser.add_argument("--manual-aesthetics", action="store_true", help="Setup aesthetics manually for each snake")
 
 args = parser.parse_args()
+
+if args.computers > 0:
+    from NN.deepq import DQN, leaky_relu, linear, he_init, zero_init
 
 stdscr = curses.initscr()
 
@@ -318,7 +320,7 @@ def main(stdscr):
             
             #Get computer input
             for i in range(len(agents)):
-                action = agent.predict_action(states[i])
+                action = agents[i].predict_action(states[i])
                 handleInput(comp_snakes[i], utils.positionToKey(action, comp_snakes[i]))
 
             #Get player input
