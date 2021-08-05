@@ -72,8 +72,8 @@ class Duel(Map):
     def getSpecificColors(self):
         super(Duel, self).getSpecificColors() 
         specific_colors = [
-            {"number": 100, "fg": "black", "bg": "black"},
-            {"number": 101, "fg": "white", "bg": "black"}
+            {"number": 10, "fg": "black", "bg": "black"},
+            {"number": 11, "fg": "white", "bg": "black"}
         ]
         return specific_colors
 

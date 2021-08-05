@@ -1,5 +1,11 @@
 import collections
-import curses
+import curses, enum
+
+class Direction(enum.Enum):
+    UP = 119
+    DOWN = 115
+    LEFT = 97
+    RIGHT = 100
 
 class Snake:
     def __init__ (self, startPos = [1, 1], startLength = 2):
@@ -34,6 +40,8 @@ class Snake:
         self.color = color
         self.head_color = head_color
 
+    # This function gets an input, updates the head coordinate and returns the coordinates of the box that has been freed
+    # If the snake grew, then this function returns -1
     def registerInput(self, input):
         if(input == self.up or input == self.right or input == self.left or input == self.down):
             if (input == self.up and not self.direction == self.down) or (input == self.right and not self.direction == self.left) or (input == self.down and not self.direction == self.up) or (input == self.left and not self.direction == self.right):

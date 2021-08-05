@@ -3,9 +3,10 @@ from collections import deque
 from numpy import dot
 from Resources.snek import Snake
 from random import choice, randrange
+from Resources.snek import Direction
 import Resources.utils as utils
 
-class game_state(enum.Enum):
+class GameState(enum.Enum):
     NOT_STARTED = 0
     STARTED = 1
     ERROR = -1
@@ -17,8 +18,8 @@ class Game:
     # aesthetics
     # ---> object 
     # ---> {char: character,
-    #       color_tail: {number, fg, bg},
-    #       color_head: {number, fg, bg}
+    #       color_tail: {fg, bg},
+    #       color_head: {fg, bg}
     #      }
     def __init__(self, map, players, computers, flush_input, refresh):
         m = __import__("Maps." + map)
@@ -28,22 +29,28 @@ class Game:
         self.colorSettings = []
 
         # The 'hashmap' 
-        self.player_ids = {}
+        self.player_snakes = {}
 
-        self.snakes = deque([])
+        # Deprecated??
+        # self.snakes = deque([])
 
         # Add players
         for i in range(len(players)):
-            # Setting the controls is a bit legacy stuff, need to refactor
-            # TODO: Get rid of setting controls in online game
-            controls = [ord('w'), ord('a'), ord('s'), ord('d')]
             id = players[i].get("id")
             name = players[i].get("name")
             aesthetics = players[i].get("aesthetics")
 
             snake = Snake(self.map.getRandomSpawnLocation(i), 2)
             snake.name = name
-            snake.setControls(controls[0], controls[1], controls[2], controls[3])
+
+            # Setting the controls is a bit legacy stuff, need to refactor
+            # TODO: Get rid of setting controls in online game
+            snake.setControls(Direction.UP, Direction.LEFT, Direction.DOWN, Direction.RIGHT)
+
+            # Find free color numbers
+            aesthetics["color_tail"]["number"] = 50 + i
+            aesthetics["color_head"]["number"] = 100 + i
+
             snake.setAesthetics( \
                     99 + i, \
                     aesthetics.get("char"), \
@@ -52,9 +59,9 @@ class Game:
                 )
             self.colorSettings.append(aesthetics.get("color_tail"))
             self.colorSettings.append(aesthetics.get("color_head"))
-            self.snakes.append(snake)
+            # self.snakes.append(snake)
 
-            self.player_ids[id] = snake
+            self.player_snakes[id] = snake
 
         self.comp_snakes = deque([])
         self.agents = deque([])
@@ -89,10 +96,17 @@ class Game:
                 agent.load_from_file("NN/" + map + "_dqn_v1.1.npy")
                 self.agents.append(agent)
 
+        # Get map variables and store them locally
         self.field = self.map.field
         self.obstacles = self.map.obstacles
         self.fruitSpawners = self.map.fruitSpawners
-        self.inputs = []
+        self.colorSettings.extend(self.map.getSpecificColors())
+
+        # Initialize all inputs to RIGHT
+        self.inputs = {}
+        for id in self.player_snakes.keys():
+            self.inputs[id] = Direction.RIGHT
+
         self.alive = len(players) + len(computers)
 
         # For syncronization
@@ -100,29 +114,67 @@ class Game:
         self.map.refreshRate = refresh
 
         # State variables
-        self.game_state = game_state.NOT_STARTED
+        self.GameState = GameState.NOT_STARTED
 
 
     def getAllColors(self):
         return self.colorSettings
 
-    # Place input (id, input)
-    def placeInput(self, id, input):
+    # Place input (player_id, input)
+    def placeInput(self, player_id, input):
+        self.inputs[player_id] = input
         pass
 
     # Handle input
     def handleInput(self, snake, input):
-        pass
+        boxLeft = snake.registerInput(input)
+
+        if not boxLeft == -1:
+            self.field.clearTempNumAt(boxLeft)
+
+        self.handlePosition(snake)
+
+        if not snake.dead:
+            for x in snake.body:
+                if x == snake.head:
+                    self.field.addTempNumAt(x, snake.number, snake.string, snake.head_color)
+                else:
+                    self.field.addTempNumAt(x, snake.number, snake.string, snake.color)
+        else:
+            for x in snake.body:
+                if not x == snake.head: self.field.clearTempNumAt(x)
 
     # Handle position
     def handlePosition(self, snake):
-        pass
+        numAtHead = self.field.getNumAt(snake.head)
+
+        if numAtHead == self.field.blank_number:
+            return
+
+        for f in self.fruitSpawners:
+            if utils.isInRange(snake.head, f.spawnStart, f.spawnEnd):
+                for fruit in f.spawnedFruits:
+                    if snake.head == fruit.start:
+                        fruit.doMagic(snake, self.player_snakes.values(), self.map)
+                        f.spawnedFruits.remove(fruit)
+                        self.field.shapes.remove(fruit)
+                        return
+
+        for snake in self.player_snakes.values():
+            if snake.head == snake.head:
+                (snake if snake.length < snake.length else snake).dead = True
+            elif numAtHead == snake.number:
+                snake.dead = True
+
+        snake.dead = True
 
     # Update
     def update(self):
-        #Sync since last update
-        loops_to_perform = int((time.time() - self.last_update_time)/self.map.refreshRate)
+        # Sync since last update
+        # loops_to_perform = int((time.time() - self.last_update_time) / self.map.refreshRate)
+        loops_to_perform = 1
 
+        
         for i in range(loops_to_perform):
             # Get states
             states = []
@@ -134,12 +186,9 @@ class Game:
                 action = self.agents[i].predict_action(states[i])
                 self.handleInput(self.comp_snakes[i], utils.positionToKey(action, self.comp_snakes[i]))
 
-            # Handle inputs -- TODO!!!!!
-            for i in range(len(self.inputs)):
-                if self.inputs[i] == None:
-                    self.handleInput(self.snakes[i], self.snakes[i].direction)
-                else:
-                    self.handleInput(self.snakes[i], self.inputs[i])            
+            # Handle inputs
+            for id in self.player_snakes.keys():
+                self.handleInput(self.player_snakes[id], self.inputs[id])            
 
             # Update for map related thingz
             self.map.update()
