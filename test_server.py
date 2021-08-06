@@ -8,36 +8,33 @@ import curses
 import pickle, codecs
 
 import Networking.libserver as libserver
-import Maps.classic
+import game
 
 sel = selectors.DefaultSelector()
 
-stdscr = curses.initscr()
-curses.nocbreak()
-curses.start_color()
-
-map = Maps.classic.Classic()
-field = map.field
-
-# comment afterward
-curses.nocbreak()
-curses.endwin()
-
 def handle_request(content):
     action = content.get("action")
-    # value = content.get("value")
+    value = content.get("value")
 
     response_action = "notice"
     response_type = "text/json"
     response_encoding = "utf-8"
+    if action == "start_game":
+        map = value.get("map")
+        players = value.get("players")
+        computers = value.get("computers")
+        flush_input = value.get("f_input")
+        refresh = value.get("refresh")
 
-    if action == "input" or action == "query":
+        new_game = game.Game(map, players, computers, flush_input, refresh)
+
+        new_game.start()
+
+        response_action = "notice"
+        response_value = {"message": "Game started!"}
+    elif action == "input" or action == "query":
         response_action = "update"
         response_value = codecs.encode(pickle.dumps(field), "base64").decode()
-    elif action == "start":
-        response_value = {
-                "message": "Succesfully started!"
-            }
     else:
         print("\033[35m" + "Unknown action!" + "\033[0m")
         response_value = {"message": "not a recognized action!"}

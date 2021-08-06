@@ -48,7 +48,43 @@ def start_connection(host, port):
 
 def get_user_request():
     action = input("Action: ")
-    value = input("Value: ")
+    if action == "start_game":
+        map = input("Map (classic, duel, survival): ")
+        n_players = int(input("Number of players: "))
+        players = []
+        for x in range(n_players):
+            name = input("Player " + str(x) + " name: ")
+            # TODO: With aesthetics
+            player_info = {
+                    "id": x,
+                    "name": name,
+                    "aesthetics": {
+                            "char":"x", 
+                            "color_tail": {
+                                    "fg": "green", 
+                                    "bg": "black"
+                                }, 
+                            "color_head": {
+                                    "fg": "green", 
+                                    "bg": "green"
+                                }
+                        }
+                }
+            
+            players.append(player_info)
+        flush_input = bool(input("Flush input?: "))
+        refresh = float(input("Refresh rate: "))
+
+        value = {
+                "map": map,
+                "players": players,
+                "computers": [],
+                "f_input": flush_input,
+                "refresh": refresh
+            }
+    else:
+        value = input("Value: ")
+    
     return action, value
 
 
@@ -68,9 +104,9 @@ try:
         events = sel.select(timeout=1)
         if not events:
             # Send a new request
-            # action, value = get_user_request()
-            action = "query"
-            value = ""
+            action, value = get_user_request()
+            # action = "query"
+            # value = ""
             request = libclient.create_request(action, value)
             prot_conn.place_request(request)
         else:

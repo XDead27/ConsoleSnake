@@ -1,4 +1,4 @@
-import time, os, enum
+import time, os, enum, threading
 from collections import deque
 from numpy import dot
 from Resources.snek import Snake
@@ -12,7 +12,7 @@ class GameState(enum.Enum):
     ERROR = -1
     STOPPED = 2
 
-class Game:
+class Game(threading.Thread):
     # players & computers
     # ---> array of objects {id (only players), name, aesthetics}    
     # aesthetics
@@ -22,6 +22,8 @@ class Game:
     #       color_head: {fg, bg}
     #      }
     def __init__(self, map, players, computers, flush_input, refresh):
+        threading.Thread.__init__(self)
+
         m = __import__("Maps." + map)
         m = getattr(m, map)
 
@@ -208,4 +210,7 @@ class Game:
             
             # alive = len(snakes) + len(comp_snakes)
 
-
+    def run(self):
+        while not self.GameState == GameState.STOPPED:
+            self.update()
+            time.sleep(self.map.refreshRate)
