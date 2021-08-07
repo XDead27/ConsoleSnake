@@ -5,7 +5,7 @@ import socket
 import selectors
 import traceback
 import curses
-import pickle, codecs
+import pickle, codecs, random
 
 import Networking.libserver as libserver
 import game
@@ -25,16 +25,21 @@ def handle_request(content):
         computers = value.get("computers")
         flush_input = value.get("f_input")
         refresh = value.get("refresh")
+        game_id = random.randint(99, 999)
 
-        new_game = game.Game(map, players, computers, flush_input, refresh)
+        new_game = game.Game(game_id, map, players, computers, flush_input, refresh)
 
         new_game.start()
 
         response_action = "notice"
-        response_value = {"message": "Game started!"}
+        response_value = {
+                "message": "Game started!",
+                "game_id": game_id
+            }
     elif action == "input" or action == "query":
-        response_action = "update"
-        response_value = codecs.encode(pickle.dumps(field), "base64").decode()
+        pass
+        # response_action = "update"
+        # response_value = codecs.encode(pickle.dumps(field), "base64").decode()
     else:
         print("\033[35m" + "Unknown action!" + "\033[0m")
         response_value = {"message": "not a recognized action!"}

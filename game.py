@@ -21,8 +21,12 @@ class Game(threading.Thread):
     #       color_tail: {fg, bg},
     #       color_head: {fg, bg}
     #      }
-    def __init__(self, map, players, computers, flush_input, refresh):
+    def __init__(self, game_id, map, players, computers, flush_input, refresh):
         threading.Thread.__init__(self)
+
+        self.game_id = game_id
+
+        self.game_state = GameState.NOT_STARTED
 
         m = __import__("Maps." + map)
         m = getattr(m, map)
@@ -116,7 +120,7 @@ class Game(threading.Thread):
         self.map.refreshRate = refresh
 
         # State variables
-        self.GameState = GameState.NOT_STARTED
+        self.game_state = GameState.STARTED
 
 
     def getAllColors(self):
@@ -195,22 +199,21 @@ class Game(threading.Thread):
             # Update for map related thingz
             self.map.update()
 
-            ## Implement a better way
-            # s_to_remove = [self.snakes[i] for i in range(len(self.snakes)) if self.snakes[i].dead]
-            # cs_to_remove = [comp_snakes[i] for i in range(len(comp_snakes)) if comp_snakes[i].dead]
-            # for s in s_to_remove:
-            #     last_snake = s
-            #     doTheDead(s)
-            #     alive -= 1
-                    
-            # for cs in cs_to_remove:
-            #     last_snake = cs
-            #     doTheDead(cs)
-            #     alive -= 1
-            
-            # alive = len(snakes) + len(comp_snakes)
+            # Check for dead snakes -- maybe move to handle position?
+            temp_ids = self.player_snakes.copy().keys()
+            for id in temp_ids:
+                if self.player_snakes[id].dead:
+                    self.player_snakes.pop(id, None)
+                    self.alive -= 1
+
+                    if self.alive <= 0:
+                        self.game_state = GameState.STOPPED
+
+            ## TODO: Make computers die
 
     def run(self):
-        while not self.GameState == GameState.STOPPED:
+        while not self.game_state == GameState.STOPPED:
             self.update()
             time.sleep(self.map.refreshRate)
+
+        print("Game ended !")

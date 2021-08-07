@@ -11,6 +11,8 @@ import Networking.libclient as libclient
 
 sel = selectors.DefaultSelector()
 
+current_game_id = None
+
 # Debug
 def drawField(field):
     for x in range(field.height):
