@@ -14,7 +14,7 @@ class Survival(Map):
         super(Survival, self).__init__()
 
         self.field = Field(20, 20, 0, '  ')
-        self.p1 = self.field.addPerimeter(20, 20, [0, 0], -1, 's', 101)
+        self.p1 = self.field.addPerimeter(20, 20, [0, 0], -1, 's', 31)
         self.obstacles.append(self.p1)
 
         #Specific to this map
@@ -42,11 +42,11 @@ class Survival(Map):
         self.spawnLocations = [[1, 1], [3, 3], [5, 5], [7, 7]]
 
     def getSpecificColors(self):
-        super(Survival, self).getSpecificColors() 
-        specific_colors = [
-            {"number": 10, "fg": "black", "bg": "black"},
-            {"number": 11, "fg": "white", "bg": "black"}
-        ]
+        specific_colors = super(Survival, self).getSpecificColors() 
+        specific_colors.extend([
+            {"number": 30, "fg": "black", "bg": "black"},
+            {"number": 31, "fg": "white", "bg": "black"}
+        ])
         return specific_colors
 
     # def askForParams(self, stdscr):
@@ -90,7 +90,7 @@ class Survival(Map):
             while not self.field.getNumAt(x) == self.field.blank_number:
                 x = [randrange(1, self.field.height - 1), randrange(1, self.field.width - 1)]
 
-            self.field.addTempNumAt(x, -1, 's', 101)
+            self.field.addTempNumAt(x, -1, 's', 31)
             self.coords.append(x)
 
         for i in range(len(self.fruitSpawners)):

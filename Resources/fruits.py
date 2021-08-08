@@ -75,6 +75,9 @@ class Fruit(Segment):
         #magic to be added
         pass
 
+    def getColor(self):
+        pass
+
 class Plus1Fruit(Fruit):
     def __init__(self, pos, number = 1, string = 'x', color = 9):
         super(Plus1Fruit, self).__init__(pos, number, string, color)
@@ -82,6 +85,13 @@ class Plus1Fruit(Fruit):
 
     def doMagic(self, s, otherSnakes, map):
         s.length += 1
+
+    def getColor(self):
+        return {
+                "number": 9,
+                "fg": "green",
+                "bg": "red"
+            }
 
 class TeliprtFruit(Fruit):
     def __init__(self, pos, number = 2, string = 'o', color = 10):
@@ -100,6 +110,13 @@ class TeliprtFruit(Fruit):
             teleportTo = [p.position[0] + randrange(2, p.height - 3), p.position[1] + randrange(2, p.width - 3)]
 
         s.head = teleportTo
+
+    def getColor(self):
+        return {
+                "number": 10,
+                "fg": "green",
+                "bg": "white"
+            }
 
 class ObstacleFruit(Fruit):
     def __init__(self, pos, number = 3, string = 'D', color = 11):
@@ -124,6 +141,13 @@ class ObstacleFruit(Fruit):
 
         newSegment = map.field.addSegment(start, end, -1, 's', 101)
 
+    def getColor(self):
+        return {
+                "number": 11,
+                "fg": "red",
+                "bg": "white"
+            }
+
 class Plus4Fruit(Fruit):
     def __init__(self, pos, number = 4, string = 'x', color = 12):
         super(Plus4Fruit, self).__init__(pos, number, string, color)
@@ -131,6 +155,13 @@ class Plus4Fruit(Fruit):
 
     def doMagic(self, s, otherSnakes, map):
         s.length += 4
+
+    def getColor(self):
+        return {
+                "number": 12,
+                "fg": "green",
+                "bg": "white"
+            }
 
 class AbundanceFruit(Fruit):
     def __init__(self, pos, number = 5, string = 'A', color = 13):
@@ -171,6 +202,11 @@ class AbundanceFruit(Fruit):
         thisFs.setFruitRarity(init_rarity)
         thisFs.totalFruits = curr_spawns
             
-        
+    def getColor(self):
+        return {
+                "number": 13,
+                "fg": "cyan",
+                "bg": "white"
+            }
             
         

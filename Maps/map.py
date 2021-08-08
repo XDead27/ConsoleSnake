@@ -32,8 +32,20 @@ class Map:
                 alreadyMentioned.append(name)
         return fruit_details
 
+    def getFruitColors(self):
+        fruit_colors = []
+        alreadyMentioned = []
+        for fs in self.fruitSpawners:
+            name = fs.fruitType[0].__name__
+            if name not in alreadyMentioned:
+                fruit = fs.fruitType[0]([0, 0])
+
+                fruit_colors.append(fruit.getColor())
+                alreadyMentioned.append(name)
+        return fruit_colors
+
     def getSpecificColors(self):
-        pass
+        return self.getFruitColors()
     
     # def askForParams(self, stdscr):
     #     pass

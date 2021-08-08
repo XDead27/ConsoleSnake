@@ -6,7 +6,7 @@ from random import choice, randrange
 from Resources.snek import Direction
 import Resources.utils as utils
 
-class GameState(enum.Enum):
+class GameState(enum.IntEnum):
     NOT_STARTED = 0
     STARTED = 1
     ERROR = -1
@@ -101,6 +101,8 @@ class Game(threading.Thread):
                 agent = DQN([122, 90, 90, 70, 4], [leaky_relu, leaky_relu, leaky_relu, linear], [he_init, he_init, he_init, zero_init])
                 agent.load_from_file("NN/" + map + "_dqn_v1.1.npy")
                 self.agents.append(agent)
+
+        self.game_winner = None
 
         # Get map variables and store them locally
         self.field = self.map.field
@@ -203,11 +205,14 @@ class Game(threading.Thread):
             temp_ids = self.player_snakes.copy().keys()
             for id in temp_ids:
                 if self.player_snakes[id].dead:
-                    self.player_snakes.pop(id, None)
                     self.alive -= 1
 
                     if self.alive <= 0:
                         self.game_state = GameState.STOPPED
+                        self.game_winner = self.player_snakes.pop(id, None).name
+                        break
+
+                    self.player_snakes.pop(id, None)
 
             ## TODO: Make computers die
 

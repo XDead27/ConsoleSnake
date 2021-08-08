@@ -13,8 +13,8 @@ class Duel(Map):
         super(Duel, self).__init__()
 
         self.field = Field(17, 38, 0, '  ')
-        self.p1 = self.field.addPerimeter(8, 8, [0, 0], -1, 's', 101)
-        self.p2 = self.field.addPerimeter(8, 8, [0, 17], -1, 's', 101)
+        self.p1 = self.field.addPerimeter(8, 8, [0, 0], -1, 's', 31)
+        self.p2 = self.field.addPerimeter(8, 8, [0, 17], -1, 's', 31)
         self.obstacles.append(self.p1)
         self.obstacles.append(self.p2)
 
@@ -70,11 +70,11 @@ class Duel(Map):
         self.spawnLocations = [[1, 1], [1, 18]]
 
     def getSpecificColors(self):
-        super(Duel, self).getSpecificColors() 
-        specific_colors = [
-            {"number": 10, "fg": "black", "bg": "black"},
-            {"number": 11, "fg": "white", "bg": "black"}
-        ]
+        specific_colors = super(Duel, self).getSpecificColors() 
+        specific_colors.extend([
+            {"number": 30, "fg": "black", "bg": "black"},
+            {"number": 31, "fg": "white", "bg": "black"}
+        ])
         return specific_colors
 
     def incrementPerimeters(self):
@@ -83,8 +83,8 @@ class Duel(Map):
             self.field.resizePerimeter(self.p1, self.p1.height + 1, self.p1.width + 1)
             self.field.resizePerimeter(self.p2, self.p2.height + 1, self.p2.width + 1)
         else:
-            self.field.addSegment([self.p1.position[0] + 1, self.p1.position[1] + self.p1.width - 1], [self.p1.position[0] + self.p1.height - 2, self.p1.position[1] + self.p1.width - 1], 0, '  ', 100)
-            self.field.addSegment([self.p2.position[0] + 1, self.p2.position[1]], [self.p2.position[0] + self.p2.height - 2, self.p2.position[1]], 0, '  ', 100)
+            self.field.addSegment([self.p1.position[0] + 1, self.p1.position[1] + self.p1.width - 1], [self.p1.position[0] + self.p1.height - 2, self.p1.position[1] + self.p1.width - 1], 0, '  ', 30)
+            self.field.addSegment([self.p2.position[0] + 1, self.p2.position[1]], [self.p2.position[0] + self.p2.height - 2, self.p2.position[1]], 0, '  ', 30)
             self.extended = True
 
         self.refreshRate -= self.refreshIncrement

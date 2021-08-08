@@ -15,7 +15,7 @@ class Classic(Map):
         self.DEFAULT_SIZE = 20
 
         self.field = Field(self.DEFAULT_SIZE + 1, self.DEFAULT_SIZE + 1, 0, '  ')
-        self.p1 = self.field.addPerimeter(self.DEFAULT_SIZE, self.DEFAULT_SIZE, [0, 0], -1, 's', 101)
+        self.p1 = self.field.addPerimeter(self.DEFAULT_SIZE, self.DEFAULT_SIZE, [0, 0], -1, 's', 31)
         self.obstacles.append(self.p1)
 
         #Setup spawners
@@ -32,11 +32,10 @@ class Classic(Map):
         self.spawnLocations = [[1, 1], [3, 3], [5, 5], [7, 7], [9, 5], [11, 3], [13, 1], [18, 18], [11, 9], [7, 13]]
 
     def getSpecificColors(self):
-        super(Classic, self).getSpecificColors() 
-        specific_colors = [
-            {"number": 10, "fg": "black", "bg": "black"},
-            {"number": 11, "fg": "white", "bg": "black"}
-        ]
+        specific_colors = super(Classic, self).getSpecificColors() 
+        specific_colors.extend([
+            {"number": 31, "fg": "white", "bg": "black"}
+        ])
         return specific_colors
 
     # def askForParams(self, stdscr):

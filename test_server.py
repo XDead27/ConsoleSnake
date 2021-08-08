@@ -4,19 +4,21 @@ import sys
 import socket
 import selectors
 import traceback
-import curses
-import pickle, codecs, random
+import random, threading
 
 import Networking.libserver as libserver
 import game
 
 sel = selectors.DefaultSelector()
 
+running_games = []
+
 def handle_request(content):
     action = content.get("action")
     value = content.get("value")
 
     response_action = "notice"
+    response_value = ""
     response_type = "text/json"
     response_encoding = "utf-8"
     if action == "start_game":
@@ -31,15 +33,32 @@ def handle_request(content):
 
         new_game.start()
 
+        global running_games            
+        running_games.append(new_game)
+
         response_action = "notice"
         response_value = {
                 "message": "Game started!",
-                "game_id": game_id
+                "game_id": game_id,
+                "colors": new_game.getAllColors()
             }
     elif action == "input" or action == "query":
-        pass
-        # response_action = "update"
-        # response_value = codecs.encode(pickle.dumps(field), "base64").decode()
+        game_id = value.get("game_id")
+        drawn_map = []
+
+        for g in running_games:
+            if g.game_id == game_id:
+                drawn_map = g.field.drawnMap
+                game_state = g.game_state
+                winner = g.game_winner
+                break
+
+        response_action = "update"
+        response_value = {
+                "drawn_map": drawn_map,
+                "game_state": game_state,
+                "winner": winner
+            }
     else:
         print("\033[35m" + "Unknown action!" + "\033[0m")
         response_value = {"message": "not a recognized action!"}
