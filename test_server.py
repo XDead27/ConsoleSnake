@@ -11,7 +11,7 @@ import game
 
 sel = selectors.DefaultSelector()
 
-running_games = []
+running_games = {}
 
 def handle_request(content):
     action = content.get("action")
@@ -34,7 +34,7 @@ def handle_request(content):
         new_game.start()
 
         global running_games            
-        running_games.append(new_game)
+        running_games[game_id] = new_game
 
         response_action = "notice"
         response_value = {
@@ -42,16 +42,13 @@ def handle_request(content):
                 "game_id": game_id,
                 "colors": new_game.getAllColors()
             }
-    elif action == "input" or action == "query":
+    elif action == "query":
         game_id = value.get("game_id")
         drawn_map = []
 
-        for g in running_games:
-            if g.game_id == game_id:
-                drawn_map = g.field.drawnMap
-                game_state = g.game_state
-                winner = g.game_winner
-                break
+        drawn_map = running_games[game_id].field.drawnMap
+        game_state = running_games[game_id].game_state
+        winner = running_games[game_id].game_winner
 
         response_action = "update"
         response_value = {
@@ -59,12 +56,29 @@ def handle_request(content):
                 "game_state": game_state,
                 "winner": winner
             }
+    elif action == "input":
+        game_id = value.get("game_id")
+        player_id = value.get("player_id")
+        input_to_register = value.get("input")
+
+        wanted_game = running_games[game_id]
+        try:
+            if not input_to_register == None:
+                wanted_game.placeInput(player_id, input_to_register)
+        except Exception:
+            message = "An error occured!"
+        else:
+            message = "Registered input!"
+
+        response_action = "notice"
+        response_value = {
+                "message": message
+            }
     else:
         print("\033[35m" + "Unknown action!" + "\033[0m")
         response_value = {"message": "not a recognized action!"}
 
     response = libserver.create_request(response_action, response_value, response_type, response_encoding)
-    print(response)
     return response
 
 def accept_wrapper(sock):
@@ -90,7 +104,7 @@ sel.register(lsock, selectors.EVENT_READ, data=None)
 
 try:
     while True:
-        events = sel.select(timeout=1)
+        events = sel.select(timeout=None)
         for key, mask in events:
             if key.data is None:
                 accept_wrapper(key.fileobj)

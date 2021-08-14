@@ -179,10 +179,10 @@ class Game(threading.Thread):
     # Update
     def update(self):
         # Sync since last update
-        # loops_to_perform = int((time.time() - self.last_update_time) / self.map.refreshRate)
-        loops_to_perform = 1
+        probing_time = time.time()
+        loops_to_perform = int((probing_time - self.last_update_time) / self.map.refreshRate)
+        # loops_to_perform = 1
 
-        
         for i in range(loops_to_perform):
             # Get states
             states = []
@@ -214,11 +214,14 @@ class Game(threading.Thread):
 
                     self.player_snakes.pop(id, None)
 
+            self.last_update_time = time.time()
+
             ## TODO: Make computers die
 
     def run(self):
         while not self.game_state == GameState.STOPPED:
             self.update()
-            time.sleep(self.map.refreshRate)
+            # Do not waste cpu
+            time.sleep(0.01)
 
         print("Game ended !")

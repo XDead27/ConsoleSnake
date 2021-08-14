@@ -32,6 +32,7 @@ class Connection:
         self._send_buffer = b""
         self._jsonheader_len = None
         self.jsonheader = None
+        self.ack = 0
         self.request = None
         self.response = None
         self._request_handler = request_handler
@@ -86,36 +87,12 @@ class Connection:
             "content-type": content_type,
             "content-encoding": content_encoding,
             "content-length": len(content_bytes),
+            "ack": self.ack
         }
         jsonheader_bytes = _json_encode(jsonheader, "utf-8")
         message_hdr = struct.pack(">H", len(jsonheader_bytes))
         message = message_hdr + jsonheader_bytes + content_bytes
         return message
-
-    # def _create_response_json_content(self):
-    #     action = self.request.get("action")
-    #     if action == "search":
-    #         query = self.request.get("value")
-    #         answer = request_search.get(query) or f'No match for "{query}".'
-    #         content = {"result": answer}
-    #     else:
-    #         content = {"result": f'Error: invalid action "{action}".'}
-    #     content_encoding = "utf-8"
-    #     response = {
-    #         "content_bytes": _json_encode(content, content_encoding),
-    #         "content_type": "text/json",
-    #         "content_encoding": content_encoding,
-    #     }
-    #     return response
-
-    # def _create_response_binary_content(self):
-    #     response = {
-    #         "content_bytes": b"First 10 bytes of request: "
-    #         + self.request[:10],
-    #         "content_type": "binary/custom-server-binary-type",
-    #         "content_encoding": "binary",
-    #     }
-    #     return response
 
     def process_events(self, mask):
         if mask & selectors.EVENT_READ:
@@ -198,6 +175,7 @@ class Connection:
                     raise ValueError(f'Missing required header "{reqhdr}".')
 
     def process_request(self):
+        self.ack = self.jsonheader["seq"]
         content_len = self.jsonheader["content-length"]
         if not len(self._recv_buffer) >= content_len:
             return

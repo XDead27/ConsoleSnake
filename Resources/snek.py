@@ -1,7 +1,7 @@
 import collections
 import curses, enum
 
-class Direction(enum.Enum):
+class Direction(enum.IntEnum):
     UP = 119
     DOWN = 115
     LEFT = 97

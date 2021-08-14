@@ -142,7 +142,7 @@ class Field:
                 del x
 
     def clearTempNumAt(self, position):
-        self.addTempNumAt(position, self.blank_number, self.blank_string, 100)
+        self.addTempNumAt(position, self.blank_number, self.blank_string, 0)
 
     def addTempNumAt(self, position, num, char, color):
         self.map[position[0]][position[1]] = num

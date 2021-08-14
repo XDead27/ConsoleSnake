@@ -4,56 +4,82 @@ import sys
 import socket
 import selectors
 import traceback
-import threading, time, curses
+import threading, time, curses, random, logging
+from logging.handlers import RotatingFileHandler
 from art import text2art
 import Resources.utils as utils
 
 import Networking.libclient as libclient
 from game import GameState
+from Resources.snek import Direction
+
+# TODO: maybe extirpate this
+logfile = 'Logs/client.log'
+log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+
+my_handler = RotatingFileHandler(logfile, mode='a', maxBytes=5*1024*1024, 
+                                 backupCount=2, encoding=None, delay=0)
+my_handler.setFormatter(log_formatter)
+my_handler.setLevel(logging.DEBUG)
+
+client_log = logging.getLogger('root')
+client_log.setLevel(logging.DEBUG)
+
+client_log.addHandler(my_handler)
 
 class GameClient(threading.Thread):
     def __init__(self, host, port):
         threading.Thread.__init__(self)
+        self.kill = threading.Event()
 
         self.sel = selectors.DefaultSelector()
         self.current_game_id = None
+        self.player_id = random.randint(1000, 9999)
 
         self.host = host
         self.port = port
         self.response_handler = self.process_response
 
         self.prot_conn = None
-        self.processed_response = False
+        self.responses = {}
         self.last_response = None
 
     def start_connection(self):
         addr = (self.host, self.port)
-        print("starting connection to", addr)
+        client_log.info("starting connection to " + str(addr))
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setblocking(True)
         sock.connect_ex(addr)
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
-        prot_conn = libclient.Connection(self.sel, sock, addr, response_handler=self.response_handler)
+        prot_conn = libclient.Connection(self.sel, sock, addr, response_handler=self.response_handler, logger=client_log)
         self.sel.register(sock, events, data=prot_conn)
 
         return prot_conn
 
     def place_request(self, request):
         if(self.prot_conn):
-            self.prot_conn.place_request(request)
+            client_log.info("Placing request: " + repr(request))
+            return self.prot_conn.place_request(request)
         else:
-            print("No connection established!")
+            client_log.error("No connection established!")
+            return None
 
-    def process_response(self, content):
-        self.processed_response = True
-        self.last_response = content
+    def process_response(self, content, ack):
+        self.responses[ack] = content
 
-    def wait_for_response(self):
-        while not self.processed_response:
-            pass
+        client_log.info("Processed response(ack, action): " + str(ack) + ", " + repr(content.get("action")))
 
-        self.processed_response = False
-        return self.last_response
+    def wait_for_response(self, wanted_ack):
+        client_log.info("Waiting for response with ack {" + str(wanted_ack) + "} ...")
+        while not wanted_ack in self.responses.keys():
+            # Do not waste cpu cycles
+            time.sleep(0.01)
+
+        client_log.info("Got response with ack {" + str(wanted_ack) + "}. Stopped waiting!")
+
+        wanted_response = self.responses[wanted_ack]
+        self.responses.pop(wanted_ack)
+        return wanted_response
 
     def start_game(self, map, players, computers, f_input, refresh_rate):
         action = "start_game"
@@ -67,9 +93,9 @@ class GameClient(threading.Thread):
 
         # Send a new request
         request = libclient.create_request(action, value)
-        self.place_request(request)
+        seq = self.place_request(request)
 
-        response = self.wait_for_response()
+        response = self.wait_for_response(seq)
 
         response_action = response.get("action")
         response_value = response.get("value")
@@ -78,10 +104,10 @@ class GameClient(threading.Thread):
         colors = []
 
         if response_action == "notice":
-            print(response_value.get("message"))
+            client_log.info(response_value.get("message"))
             if response_value.get("game_id"):
                 self.current_game_id = response_value.get("game_id")
-                print("Game ID: " + str(self.current_game_id))
+                client_log.info("Game ID: " + str(self.current_game_id))
                 game_state = GameState.STARTED
             
             if response_value.get("colors"):
@@ -95,16 +121,18 @@ class GameClient(threading.Thread):
 
         # Send a new request
         request = libclient.create_request(action, value)
-        self.place_request(request)
+        seq = self.place_request(request)
 
-        response = self.wait_for_response()
+        response = self.wait_for_response(seq)
 
         response_action = response.get("action")
         response_value = response.get("value")
 
         drawn_map = []
+        winner = ''
         if response_action == "notice":
-            print(response_value.get("message"))
+            client_log.error(response_value.get("message"))
+            game_state = GameState.ERROR
         elif response_action == "update":
             drawn_map = response_value.get("drawn_map")
             game_state = response_value.get("game_state")
@@ -112,29 +140,84 @@ class GameClient(threading.Thread):
 
         return drawn_map, game_state, winner
 
+    def send_input(self, input):
+        action = "input"
+        value = {
+                "game_id": self.current_game_id,
+                "player_id": self.player_id,
+                "input": input
+            }
+
+        # Send a new request
+        request = libclient.create_request(action, value)
+        seq = self.place_request(request)
+
+        response = self.wait_for_response(seq)
+
+        response_action = response.get("action")
+        response_value = response.get("value")
+
+        # if response_action == "notice":
+        #     client_log.info(response_value.get("message"))
+
+        # return self.query_game()
+
     def run(self):
         self.prot_conn = self.start_connection()
 
-        try:
-            while True:
-                events = self.sel.select(timeout=0.3)
-                for key, mask in events:
-                    prot_conn = key.data
-                    try:
-                        prot_conn.process_events(mask)
-                    except Exception:
-                        print(
-                            "main: error: exception for",
-                            f"{prot_conn.addr}:\n{traceback.format_exc()}",
-                        )
-                        prot_conn.close()
-                # Check for a socket being monitored to continue.
-                if not self.sel.get_map():
-                    break
-        except KeyboardInterrupt:
-            print("caught keyboard interrupt, exiting")
-        finally:
-            self.sel.close()
+        while not self.kill.is_set():
+            events = self.sel.select(timeout=0.01)
+            for key, mask in events:
+                prot_conn = key.data
+                try:
+                    prot_conn.process_events(mask)
+                except Exception:
+                    client_log.error(
+                        "main: error: exception for" + \
+                        f"{prot_conn.addr}:\n{traceback.format_exc()}",
+                    )
+                    prot_conn.close()
+            # Check for a socket being monitored to continue.
+            if not self.sel.get_map():
+                break
+
+        self.sel.close()
+
+
+class InputThread(threading.Thread):
+    def __init__(self, game_client, stdscr):
+        threading.Thread.__init__(self)
+        self.kill = threading.Event()
+        self.game_client = game_client
+        self.stdscr = stdscr
+
+    def filterInput(self, raw):
+        # TODO: Setup menu for these
+        available_inputs = {
+                ord('w'): Direction.UP, 
+                ord('a'): Direction.LEFT, 
+                ord('s'): Direction.DOWN, 
+                ord('d'): Direction.RIGHT
+            }
+
+        if raw in available_inputs.keys():
+            return available_inputs.get(raw)
+        else:
+            return None
+
+    def run(self):
+        self.stdscr.nodelay(False)
+
+        while not self.kill.is_set():
+            try:
+                input_raw = self.stdscr.getch()
+            except Exception:
+                break
+            filtered_input = self.filterInput(input_raw)
+
+            if not filtered_input == None:
+                self.game_client.send_input(filtered_input)
+
 
 def get_user_request():
     map = input("Map (classic, duel, survival): ")
@@ -166,6 +249,16 @@ def get_user_request():
     
     return map, players, computers, flush_input, refresh
 
+def drawField(stdscr, drawn_map):
+    for x in range(len(drawn_map)):
+        for y in range(len(drawn_map[x])):
+            if curses_color:
+                stdscr.addstr(text2art(drawn_map[x][y][0], font='cjk'), curses.color_pair(drawn_map[x][y][1]))
+            else:
+                stdscr.addstr(text2art(drawn_map[x][y][0], font='cjk'))
+        stdscr.addstr('\n')
+
+
 
 if len(sys.argv) != 3:
     print("usage:", sys.argv[0], "<host> <port>")
@@ -180,27 +273,69 @@ try:
     game_client.start()
     # Send a new request
     map, players, computers, flush_input, refresh_rate = get_user_request()
+    # TODO: Resolve after doing the room thing
+    players[0]['id'] = game_client.player_id
 
+    # Start the game
     game_state, colors = game_client.start_game(map, players, computers, flush_input, refresh_rate)
 
     if game_state == GameState.STARTED:
-        stdscr = curses.initscr()
+        screen = curses.initscr()
+        curses.cbreak()
+        # Create a new pad to display the game
+        game_curses_pad = curses.newpad(125, 125)
+
         if curses.has_colors():
             curses.start_color()
             curses_color = True
 
+            # Initialize all colors
             for color in colors:
                 curses.init_pair(color.get("number"), utils.parseColor(color.get("fg")), utils.parseColor(color.get("bg")))
 
+        # Start input thread
+        input_thread = InputThread(game_client, game_curses_pad)
+        input_thread.start()
+        
     while game_state == GameState.STARTED:
         drawn_map, game_state, winner = game_client.query_game()
-        print(repr(drawn_map))
-        time.sleep(refresh_rate)
 
-    print("\n\nGame ended!\n")
+        game_curses_pad.clear()
+        drawField(game_curses_pad, drawn_map)
+
+        # Update screen size
+        scr_height, scr_width = screen.getmaxyx()
+
+        # Try to draw the pad
+        try:
+            game_curses_pad.refresh(0,0 , 0,0 , scr_height-1,scr_width-1)
+        except Exception:
+            curses.nocbreak()
+            curses.endwin()
+            print(str(scr_height) + ", " + str(scr_width))
+            sys.exit(1)
+
+        time.sleep(0.03)
+
+    screen.clear()
+    screen.addstr("\n\nGame ended!\n")
 
     if winner:
-        print(winner + " WON!!!!")
+        screen.addstr(winner + " WON!!!!")
+
+    screen.refresh()
+
+    game_client.kill.set()
+    input_thread.kill.set()
+
+    time.sleep(2)
+
+    curses.nocbreak()
+    curses.endwin()
 
 except KeyboardInterrupt:
+    game_client.kill.set()
+    input_thread.kill.set()
+    curses.nocbreak()
+    curses.endwin()
     sys.exit(1)

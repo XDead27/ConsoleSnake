@@ -3,6 +3,7 @@ import selectors
 import json
 import io
 import struct
+from collections import deque
 
 def create_request(action, value, type="text/json"):
     return dict(
@@ -23,18 +24,21 @@ def _json_decode(json_bytes, encoding):
     return obj
 
 class Connection:
-    def __init__(self, selector, sock, addr, response_handler):
+    def __init__(self, selector, sock, addr, response_handler, logger):
         self.selector = selector
         self.sock = sock
         self.addr = addr
-        self.request = None
+        self.current_request = None
+        self.request_queue = deque([])
         self._recv_buffer = b""
         self._send_buffer = b""
-        self._has_request = False
         self._jsonheader_len = None
         self.jsonheader = None
+        self.seq = 0
         self.response = None
         self._response_handler = response_handler
+
+        self.logger = logger
 
     def _set_selector_events_mask(self, mode):
         """Set selector to listen for events: mode is 'r', 'w', or 'rw'."""
@@ -65,7 +69,7 @@ class Connection:
     def _write(self):
         if self._send_buffer:
             # Telemetry
-            # print("sending", repr(self._send_buffer), "to", self.addr)
+            self.logger.debug("sending " + repr(self._send_buffer) + " to " + str(self.addr))
             try:
                 # Should be ready to write
                 sent = self.sock.send(self._send_buffer)
@@ -78,25 +82,30 @@ class Connection:
     def _create_message(
         self, *, content_bytes, content_type, content_encoding
     ):
+
         jsonheader = {
             "byteorder": sys.byteorder,
             "content-type": content_type,
             "content-encoding": content_encoding,
             "content-length": len(content_bytes),
+            "seq": self.seq
         }
         jsonheader_bytes = _json_encode(jsonheader, "utf-8")
         message_hdr = struct.pack(">H", len(jsonheader_bytes))
         message = message_hdr + jsonheader_bytes + content_bytes
+
+        self.seq += 1
+
         return message
 
     # def _process_response_json_content(self):
     #     content = self.response
     #     result = content.get("result")
-    #     print(f"got result: {result}")
+    #     self.logger.debug(f"got result: {result}")
 
     # def _process_response_binary_content(self):
     #     content = self.response
-    #     print(f"got response: {repr(content)}")
+    #     self.logger.debug(f"got response: {repr(content)}")
 
     def process_events(self, mask):
         if mask & selectors.EVENT_READ:
@@ -119,31 +128,31 @@ class Connection:
                 self.process_response()
 
     def write(self):
-        if self._has_request:
+        if len(self.request_queue) > 0:
             self.queue_request()
 
         self._write()
 
-        if not self._has_request:
+        if len(self.request_queue) == 0:
             if not self._send_buffer:
                 # Set selector to listen for read events, we're done writing.
                 self._set_selector_events_mask("r")
 
     def close(self):
-        print("closing connection to", self.addr)
+        self.logger.debug("closing connection to " + str(self.addr))
         try:
             self.selector.unregister(self.sock)
         except Exception as e:
-            print(
-                "error: selector.unregister() exception for",
+            self.logger.debug(
+                "error: selector.unregister() exception for" + \
                 f"{self.addr}: {repr(e)}",
             )
 
         try:
             self.sock.close()
         except OSError as e:
-            print(
-                "error: socket.close() exception for",
+            self.logger.debug(
+                "error: socket.close() exception for" + \
                 f"{self.addr}: {repr(e)}",
             )
         finally:
@@ -151,14 +160,17 @@ class Connection:
             self.sock = None
 
     def place_request(self, request):
-        self.request = request
-        self._has_request = True
+        self.request_queue.append(request)
         self._set_selector_events_mask("w")
 
+        return self.seq + len(self.request_queue) - 1
+
     def queue_request(self):
-        content = self.request["content"]
-        content_type = self.request["type"]
-        content_encoding = self.request["encoding"]
+        self.current_request = self.request_queue.popleft()
+
+        content = self.current_request["content"]
+        content_type = self.current_request["type"]
+        content_encoding = self.current_request["encoding"]
         if content_type == "text/json":
             req = {
                 "content_bytes": _json_encode(content, content_encoding),
@@ -173,7 +185,7 @@ class Connection:
             }
         message = self._create_message(**req)
         self._send_buffer += message
-        self._has_request = False
+    
 
     def process_protoheader(self):
         hdrlen = 2
@@ -195,12 +207,14 @@ class Connection:
                 "content-length",
                 "content-type",
                 "content-encoding",
+                "ack"
             ):
                 if reqhdr not in self.jsonheader:
                     raise ValueError(f'Missing required header "{reqhdr}".')
 
     def process_response(self):
         content_len = self.jsonheader["content-length"]
+        ack = self.jsonheader["ack"]
         if not len(self._recv_buffer) >= content_len:
             return
         data = self._recv_buffer[:content_len]
@@ -212,8 +226,8 @@ class Connection:
         else:
             self.response = data
         # Telemetry
-        # print("received response", repr(self.response), "from", self.addr)
-        self._response_handler(self.response)
+        self.logger.debug("received response " + repr(ack) + " from " + str(self.addr))
+        self._response_handler(self.response, ack)
 
         # Switch to write again when response has been processed
         self.refresh_connection()
@@ -221,7 +235,6 @@ class Connection:
     def refresh_connection(self):
         self._recv_buffer = b""
         self._send_buffer = b""
-        self._has_request = False
         self._jsonheader_len = None
         self.jsonheader = None
         self.response = None
