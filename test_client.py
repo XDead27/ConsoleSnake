@@ -54,15 +54,23 @@ class GameClient(threading.Thread):
         prot_conn = libclient.Connection(self.sel, sock, addr, response_handler=self.response_handler, logger=client_log)
         self.sel.register(sock, events, data=prot_conn)
 
+        client_log.debug("Protocol connection: " + repr(prot_conn))
+
         return prot_conn
 
     def place_request(self, request):
-        if(self.prot_conn):
-            client_log.info("Placing request: " + repr(request))
-            return self.prot_conn.place_request(request)
-        else:
+        init_time = time.time()
+        timeout_time = 5
+        while not self.prot_conn and time.time() - init_time < timeout_time:
+            client_log.debug("No connection established... Retrying in 0.5s!")
+            time.sleep(0.5)
+
+        if not self.prot_conn:
             client_log.error("No connection established!")
             return None
+
+        client_log.info("Placing request: " + repr(request))
+        return self.prot_conn.place_request(request)
 
     def process_response(self, content, ack):
         self.responses[ack] = content
@@ -260,82 +268,82 @@ def drawField(stdscr, drawn_map):
 
 
 
-if len(sys.argv) != 3:
-    print("usage:", sys.argv[0], "<host> <port>")
-    sys.exit(1)
+# if len(sys.argv) != 3:
+#     print("usage:", sys.argv[0], "<host> <port>")
+#     sys.exit(1)
 
-host, port = sys.argv[1], int(sys.argv[2])
-curses_color = False
+# host, port = sys.argv[1], int(sys.argv[2])
+# curses_color = False
 
-try:
-    # Start connection to server
-    game_client = GameClient(host, port)
-    game_client.start()
-    # Send a new request
-    map, players, computers, flush_input, refresh_rate = get_user_request()
-    # TODO: Resolve after doing the room thing
-    players[0]['id'] = game_client.player_id
+# try:
+#     # Start connection to server
+#     game_client = GameClient(host, port)
+#     game_client.start()
+#     # Send a new request
+#     map, players, computers, flush_input, refresh_rate = get_user_request()
+#     # TODO: Resolve after doing the room thing
+#     players[0]['id'] = game_client.player_id
 
-    # Start the game
-    game_state, colors = game_client.start_game(map, players, computers, flush_input, refresh_rate)
+#     # Start the game
+#     game_state, colors = game_client.start_game(map, players, computers, flush_input, refresh_rate)
 
-    if game_state == GameState.STARTED:
-        screen = curses.initscr()
-        curses.cbreak()
-        # Create a new pad to display the game
-        game_curses_pad = curses.newpad(125, 125)
+#     if game_state == GameState.STARTED:
+#         screen = curses.initscr()
+#         curses.cbreak()
+#         # Create a new pad to display the game
+#         game_curses_pad = curses.newpad(125, 125)
 
-        if curses.has_colors():
-            curses.start_color()
-            curses_color = True
+#         if curses.has_colors():
+#             curses.start_color()
+#             curses_color = True
 
-            # Initialize all colors
-            for color in colors:
-                curses.init_pair(color.get("number"), utils.parseColor(color.get("fg")), utils.parseColor(color.get("bg")))
+#             # Initialize all colors
+#             for color in colors:
+#                 curses.init_pair(color.get("number"), utils.parseColor(color.get("fg")), utils.parseColor(color.get("bg")))
 
-        # Start input thread
-        input_thread = InputThread(game_client, game_curses_pad)
-        input_thread.start()
+#         # Start input thread
+#         input_thread = InputThread(game_client, game_curses_pad)
+#         input_thread.start()
         
-    while game_state == GameState.STARTED:
-        drawn_map, game_state, winner = game_client.query_game()
+#     while game_state == GameState.STARTED:
+#         drawn_map, game_state, winner = game_client.query_game()
 
-        game_curses_pad.clear()
-        drawField(game_curses_pad, drawn_map)
+#         game_curses_pad.clear()
+#         drawField(game_curses_pad, drawn_map)
 
-        # Update screen size
-        scr_height, scr_width = screen.getmaxyx()
+#         # Update screen size
+#         scr_height, scr_width = screen.getmaxyx()
 
-        # Try to draw the pad
-        try:
-            game_curses_pad.refresh(0,0 , 0,0 , scr_height-1,scr_width-1)
-        except Exception:
-            curses.nocbreak()
-            curses.endwin()
-            print(str(scr_height) + ", " + str(scr_width))
-            sys.exit(1)
+#         # Try to draw the pad
+#         try:
+#             game_curses_pad.refresh(0,0 , 0,0 , scr_height-1,scr_width-1)
+#         except Exception:
+#             curses.nocbreak()
+#             curses.endwin()
+#             print(str(scr_height) + ", " + str(scr_width))
+#             sys.exit(1)
 
-        time.sleep(0.03)
+#         time.sleep(0.03)
 
-    screen.clear()
-    screen.addstr("\n\nGame ended!\n")
+#     screen.clear()
+#     screen.addstr("\n\nGame ended!\n")
 
-    if winner:
-        screen.addstr(winner + " WON!!!!")
+#     if winner:
+#         screen.addstr(winner + " WON!!!!")
 
-    screen.refresh()
+#     screen.refresh()
 
-    game_client.kill.set()
-    input_thread.kill.set()
+#     game_client.kill.set()
+#     input_thread.kill.set()
 
-    time.sleep(2)
+#     time.sleep(2)
 
-    curses.nocbreak()
-    curses.endwin()
+#     curses.nocbreak()
+#     curses.endwin()
 
-except KeyboardInterrupt:
-    game_client.kill.set()
-    input_thread.kill.set()
-    curses.nocbreak()
-    curses.endwin()
-    sys.exit(1)
+# except KeyboardInterrupt:
+#     game_client.kill.set()
+#     input_thread.kill.set()
+#     curses.nocbreak()
+#     curses.endwin()
+#     sys.exit(1)

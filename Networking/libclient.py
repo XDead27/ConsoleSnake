@@ -94,7 +94,7 @@ class Connection:
         message_hdr = struct.pack(">H", len(jsonheader_bytes))
         message = message_hdr + jsonheader_bytes + content_bytes
 
-        self.seq += 1
+        self.seq = (self.seq + 1)%100
 
         return message
 
