@@ -8,9 +8,11 @@ import random, threading
 
 import Networking.libserver as libserver
 import game
+import Resources.room as room
 
 sel = selectors.DefaultSelector()
 
+active_rooms = {}
 running_games = {}
 
 def handle_request(content):
@@ -21,13 +23,52 @@ def handle_request(content):
     response_value = ""
     response_type = "text/json"
     response_encoding = "utf-8"
-    if action == "start_game":
+    if action == "create_room":
+        name = value.get("name")
         map = value.get("map")
-        players = value.get("players")
         computers = value.get("computers")
         flush_input = value.get("f_input")
         refresh = value.get("refresh")
         game_id = random.randint(99, 999)
+
+        new_room = room.Room(game_id, name, map, computers, flush_input, refresh)
+
+        global active_rooms
+        active_rooms[game_id] = new_room
+
+        response_action = "notice"
+        response_value = {
+                "message": "Room created!",
+                "room_id": game_id
+            }
+    elif action == "join_room":
+        room_id = value.get("room_id")
+        player_settings = value.get("settings")
+        wanted_room = active_rooms.get(room_id)
+
+        if wanted_room is not None:
+            player_id = wanted_room.insert_player(player_settings)
+
+            response_action = "notice"
+            response_value = {
+                    "message": "Succesfully added player to room!",
+                    "player_id": player_id,
+                    "room_data": active_rooms.get(room_id).json_data()
+                }
+        else:
+            response_action = "notice"
+            response_value = {
+                    "message": "Room not found!"
+                }
+    elif action == "start_game":
+        room_id = value.get("room_id")
+        room_to_start = active_rooms.get(room_id)
+        map = room_to_start.map
+        players = room_to_start.players
+        computers = room_to_start.computers
+        flush_input = room_to_start.f_input
+        refresh = room_to_start.refresh_rate
+        game_id = room_id
 
         new_game = game.Game(game_id, map, players, computers, flush_input, refresh)
 
@@ -73,6 +114,13 @@ def handle_request(content):
         response_action = "notice"
         response_value = {
                 "message": message
+            }
+    elif action == "query_rooms":
+        # Get room data from an array
+
+        response_action = "room_list"
+        response_value = {
+                "room_data": [room.json_data() for room in active_rooms.values()]
             }
     else:
         print("\033[35m" + "Unknown action!" + "\033[0m")

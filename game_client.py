@@ -34,7 +34,7 @@ class GameClient(threading.Thread):
 
         self.sel = selectors.DefaultSelector()
         self.current_game_id = None
-        self.player_id = random.randint(1000, 9999)
+        self.player_id = None
 
         self.host = host
         self.port = port
@@ -43,6 +43,22 @@ class GameClient(threading.Thread):
         self.prot_conn = None
         self.responses = {}
         self.last_response = None
+
+        # TODO
+        self.settings = {
+                "name": 'dani',
+                "aesthetics": {
+                        "char":"x", 
+                        "color_tail": {
+                                "fg": "green", 
+                                "bg": "black"
+                            }, 
+                        "color_head": {
+                                "fg": "green", 
+                                "bg": "green"
+                            }
+                    }
+            }
 
     def start_connection(self):
         addr = (self.host, self.port)
@@ -89,14 +105,67 @@ class GameClient(threading.Thread):
         self.responses.pop(wanted_ack)
         return wanted_response
 
-    def start_game(self, map, players, computers, f_input, refresh_rate):
-        action = "start_game"
+    def create_room(self, name, map, computers, f_input, refresh_rate):
+        action = "create_room"
         value = {
+                "name": name,
                 "map": map,
-                "players": players,
                 "computers": [],
                 "f_input": f_input,
                 "refresh": refresh_rate
+            }
+
+        # Send a new request
+        request = libclient.create_request(action, value)
+        seq = self.place_request(request)
+
+        response = self.wait_for_response(seq)
+
+        response_action = response.get("action")
+        response_value = response.get("value")
+
+        if response_action == "notice":
+            client_log.info(response_value.get("message"))
+            if response_value.get("room_id"):
+                self.current_game_id = response_value.get("room_id")
+                client_log.info("Game ID: " + str(self.current_game_id))
+                # self.join_room(self.current_game_id)
+            else:
+                client_log.error("Room did not create successfully!")
+
+        
+    def join_room(self, room_id):
+        action = "join_room"
+        value = {
+                "room_id": room_id,
+                "settings": self.settings
+            }
+
+        # Send a new request
+        request = libclient.create_request(action, value)
+        seq = self.place_request(request)
+
+        response = self.wait_for_response(seq)
+
+        response_action = response.get("action")
+        response_value = response.get("value")
+
+        if response_action == "notice":
+            client_log.info(response_value.get("message"))
+            if response_value.get("player_id"):
+                self.player_id = response_value.get("player_id")
+                client_log.info("Player ID: " + str(self.player_id))
+                client_log.debug("Other players in room: " + str(response_value.get("room_data").get("players")))
+                self.current_game_id = room_id
+                return response_value.get("room_data")
+            else:
+                client_log.error("Did not join successfully!")
+                return None
+
+    def start_game(self, room_id):
+        action = "start_game"
+        value = {
+                "room_id": room_id
             }
 
         # Send a new request
@@ -169,6 +238,28 @@ class GameClient(threading.Thread):
         #     client_log.info(response_value.get("message"))
 
         # return self.query_game()
+
+    def query_rooms(self):
+        action = "query_rooms"
+        value = {}
+
+        # Send a new request
+        request = libclient.create_request(action, value)
+        seq = self.place_request(request)
+
+        response = self.wait_for_response(seq)
+
+        response_action = response.get("action")
+        response_value = response.get("value")
+
+        room_data = []
+        if response_action == "notice":
+            client_log.error(response_value.get("message"))
+            return None
+        elif response_action == "room_list":
+            room_data = response_value.get("room_data")
+
+        return room_data
 
     def run(self):
         self.prot_conn = self.start_connection()
@@ -256,94 +347,3 @@ def get_user_request():
     refresh = float(input("Refresh rate: "))
     
     return map, players, computers, flush_input, refresh
-
-def drawField(stdscr, drawn_map):
-    for x in range(len(drawn_map)):
-        for y in range(len(drawn_map[x])):
-            if curses_color:
-                stdscr.addstr(text2art(drawn_map[x][y][0], font='cjk'), curses.color_pair(drawn_map[x][y][1]))
-            else:
-                stdscr.addstr(text2art(drawn_map[x][y][0], font='cjk'))
-        stdscr.addstr('\n')
-
-
-
-# if len(sys.argv) != 3:
-#     print("usage:", sys.argv[0], "<host> <port>")
-#     sys.exit(1)
-
-# host, port = sys.argv[1], int(sys.argv[2])
-# curses_color = False
-
-# try:
-#     # Start connection to server
-#     game_client = GameClient(host, port)
-#     game_client.start()
-#     # Send a new request
-#     map, players, computers, flush_input, refresh_rate = get_user_request()
-#     # TODO: Resolve after doing the room thing
-#     players[0]['id'] = game_client.player_id
-
-#     # Start the game
-#     game_state, colors = game_client.start_game(map, players, computers, flush_input, refresh_rate)
-
-#     if game_state == GameState.STARTED:
-#         screen = curses.initscr()
-#         curses.cbreak()
-#         # Create a new pad to display the game
-#         game_curses_pad = curses.newpad(125, 125)
-
-#         if curses.has_colors():
-#             curses.start_color()
-#             curses_color = True
-
-#             # Initialize all colors
-#             for color in colors:
-#                 curses.init_pair(color.get("number"), utils.parseColor(color.get("fg")), utils.parseColor(color.get("bg")))
-
-#         # Start input thread
-#         input_thread = InputThread(game_client, game_curses_pad)
-#         input_thread.start()
-        
-#     while game_state == GameState.STARTED:
-#         drawn_map, game_state, winner = game_client.query_game()
-
-#         game_curses_pad.clear()
-#         drawField(game_curses_pad, drawn_map)
-
-#         # Update screen size
-#         scr_height, scr_width = screen.getmaxyx()
-
-#         # Try to draw the pad
-#         try:
-#             game_curses_pad.refresh(0,0 , 0,0 , scr_height-1,scr_width-1)
-#         except Exception:
-#             curses.nocbreak()
-#             curses.endwin()
-#             print(str(scr_height) + ", " + str(scr_width))
-#             sys.exit(1)
-
-#         time.sleep(0.03)
-
-#     screen.clear()
-#     screen.addstr("\n\nGame ended!\n")
-
-#     if winner:
-#         screen.addstr(winner + " WON!!!!")
-
-#     screen.refresh()
-
-#     game_client.kill.set()
-#     input_thread.kill.set()
-
-#     time.sleep(2)
-
-#     curses.nocbreak()
-#     curses.endwin()
-
-# except KeyboardInterrupt:
-#     game_client.kill.set()
-#     input_thread.kill.set()
-#     curses.nocbreak()
-#     curses.endwin()
-#     sys.exit(1)
