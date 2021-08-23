@@ -23,6 +23,9 @@ def handle_request(content):
     response_value = ""
     response_type = "text/json"
     response_encoding = "utf-8"
+
+    global active_rooms
+
     if action == "create_room":
         name = value.get("name")
         map = value.get("map")
@@ -33,7 +36,6 @@ def handle_request(content):
 
         new_room = room.Room(game_id, name, map, computers, flush_input, refresh)
 
-        global active_rooms
         active_rooms[game_id] = new_room
 
         response_action = "notice"
@@ -60,6 +62,20 @@ def handle_request(content):
             response_value = {
                     "message": "Room not found!"
                 }
+    elif action == "leave_room":
+        room_id = value.get("room_id")
+        player_id = value.get("player_id")
+
+        wanted_room = active_rooms.get(room_id)
+        for idx in range(len(wanted_room.players)):
+            if wanted_room.players[idx].get("id"):
+                del wanted_room.players[idx]
+                break
+
+        response_action = "notice"
+        response_value = {
+                "message": "Successfully removed player!"
+            }
     elif action == "start_game":
         room_id = value.get("room_id")
         room_to_start = active_rooms.get(room_id)
@@ -122,6 +138,23 @@ def handle_request(content):
         response_value = {
                 "room_data": [room.json_data() for room in active_rooms.values()]
             }
+    elif action == "delete_room":
+        room_id = value.get("room_id")
+        instigator_id = value.get("player_id")
+
+        # Shit security for now
+        if instigator_id in [p['id'] for p in active_rooms.get(room_id).players]:
+            active_rooms.pop(room_id)
+
+            response_action = "notice"
+            response_value = {
+                    "message": "Successfully deleted room!"
+                }
+        else:
+            response_action = "notice"
+            response_value = {
+                    "message": "You are not in the said room!"
+                }
     else:
         print("\033[35m" + "Unknown action!" + "\033[0m")
         response_value = {"message": "not a recognized action!"}

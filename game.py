@@ -12,6 +12,16 @@ class GameState(enum.IntEnum):
     ERROR = -1
     STOPPED = 2
 
+def int_to_string(integer):
+    if integer == GameState.NOT_STARTED:
+        return "not started"
+    elif integer == GameState.STARTED:
+        return "started"
+    elif integer == GameState.ERROR:
+        return "error"
+    elif integer == GameState.STOPPED:
+        return "stopped"
+
 class Game(threading.Thread):
     # players & computers
     # ---> array of objects {id (only players), name, aesthetics}    

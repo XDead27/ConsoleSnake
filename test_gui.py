@@ -2,9 +2,9 @@
 
 import curses, time, sys
 import Resources.utils as utils
-import Resources.menu as menu
+import Resources.tui as tui
 from game_client import GameClient, InputThread
-from game import GameState
+from game import GameState, int_to_string
 from art import text2art
 
 def drawField(stdscr, drawn_map, curses_color):
@@ -38,41 +38,41 @@ class ConsoleSnakeApp(object):
             ("play", self.display_rooms_menu),
             ("settings", curses.flash),
         ]
-        main_menu = menu.Menu(main_menu_items, int(y/2.2), int(x/2.2), self.screen)
+        main_menu = tui.Menu(main_menu_items, int(y/2.2), int(x/2.2), self.screen)
         main_menu.display()
 
     def display_rooms_menu(self):
-        rooms_submenu_items = [("create room", self.create_room), ("refresh", self.refresh_rooms_menu)]
+        rooms_submenu_items = [("(option) create room", self.create_room), ("(option) refresh", self.refresh_rooms_menu)]
 
         rooms = self.game_client.query_rooms()
 
         for room in rooms:
-            room_name = room.get("name")
+            room_name = "(" + str(room.get("player_count")) + "/2) " + room.get("name")
             def room_join():
                 self.join_room(room.get("id"))
 
             rooms_submenu_items.append((room_name, room_join))            
 
         y, x = self.screen.getmaxyx()
-        self.rooms_player_count = menu.PanelList(int(y/2.2) + 2, int(x/2.2) + 10, [str(r.get("player_count")) for r in rooms], self.screen)
+        self.rooms_player_count = tui.PanelList(int(y/2.2) + 2, int(x/2.2) + 10, [str(r.get("player_count")) for r in rooms], self.screen)
         self.rooms_player_count.display()
 
-        self.rooms_submenu = menu.Menu(rooms_submenu_items, int(y/2.2), int(x/2.2), self.screen)
+        self.rooms_submenu = tui.Menu(rooms_submenu_items, int(y/2.2), int(x/2.2), self.screen)
         self.rooms_submenu.display()
 
         self.rooms_player_count.hide()
 
     def refresh_rooms_menu(self):
-        rooms_submenu_items = [("create room", self.create_room), ("refresh", self.refresh_rooms_menu)]
+        rooms_submenu_items = [("(option) create room", self.create_room), ("(option) refresh", self.refresh_rooms_menu)]
 
         rooms = self.game_client.query_rooms()
 
         for room in rooms:
-            room_name = room.get("name")
+            room_name = "(" + str(room.get("player_count")) + "/2) " + room.get("name")
             def room_join():
                 self.join_room(room.get("id"))
 
-            rooms_submenu_items.append((room_name, room_join))            
+            rooms_submenu_items.append((room_name, room_join))        
 
         self.rooms_submenu.set_items(rooms_submenu_items)
     
@@ -87,29 +87,44 @@ class ConsoleSnakeApp(object):
         y, x = self.screen.getmaxyx()
         items = ["PLAYER LIST", "======================", " "]
         items.extend(player_names)
-        player_list = menu.PanelList(int(y/4), int(x/3), items, self.screen)
+        player_list = tui.PanelList(int(y/4), int(x/3), items, self.screen)
         player_list.display()
 
-        def play_game():
+        items = ["OPTIONS", "======================", " "]
+        items.append("STATUS: " + int_to_string(room_data.get("game_state")))
+        items.append("MAP: " + room_data.get("map"))
+        items.append("FLUSH?: " + str(room_data.get("f_input")))
+        items.append("REFRESH: " + str(room_data.get("refresh_rate")))
+        items.append("PLAYERS: " + str(room_data.get("player_count")))
+        options_list = tui.PanelList(int(y/4), int(x/2), items, self.screen)
+        options_list.display()
+
+        room_option = tui.OptionsBox(int(y * 4/5), int(x/3), self.screen, "", ["start", "delete"], False)
+        room_option.items[-1] = "back"
+        chs = room_option.display()
+
+        if chs == 'start':
             self.play_game(room_data.get("id"))
-
-        room_menu = menu.Menu([("start", play_game)], int(y * 4/5), int(x/3), self.screen, False)
-        room_menu.items[-1] = ("back", "exit")
-        room_menu.display()   
-
+        elif chs == 'delete':
+            self.game_client.delete_room()
+        else:
+            self.game_client.leave_room()
         player_list.hide()  
+
+        return
 
     def create_room(self):
         name, map, f_input, refresh_rate = self.display_create_room_dialog()
 
-        self.game_client.create_room(name, map, [], f_input, refresh_rate)
+        room_id = self.game_client.create_room(name, map, [], f_input, refresh_rate)
 
         self.refresh_rooms_menu()
+        self.join_room(room_id)
 
     def display_create_room_dialog(self):
         y, x = self.screen.getmaxyx()
 
-        name_dialog = menu.InputBox(int(y/2)-3, int(x/2)-10, self.screen, "Name for room:")
+        name_dialog = tui.InputBox(int(y/2)-3, int(x/2)-10, self.screen, "Name for room:")
         name_dialog.set_window_size(7, 20)
         name = name_dialog.display()
 
@@ -117,21 +132,21 @@ class ConsoleSnakeApp(object):
         f_input = False
         refresh_rate = 0.5
 
-        map_submenu = menu.OptionsBox(int(y/2.2), int(x/2.2), self.screen, "Choose map:", ['classic', 'duel', 'survival'])
+        map_submenu = tui.OptionsBox(int(y/2.2), int(x/2.2), self.screen, "Choose map:", ['classic', 'duel', 'survival'])
         chosen_map = map_submenu.display()
         if chosen_map == 'abort':
             return
         
-        finput_option = menu.OptionsBox(int(y/2.2), int(x/2.2), self.screen, "Flush input?", ['yes', 'no'], vertical=False)
+        finput_option = tui.OptionsBox(int(y/2.2), int(x/3.2), self.screen, "Flush input?", ['yes', 'no'], vertical=False)
         f_input = finput_option.display()
-        if chosen_map == 'abort':
+        if f_input == 'abort':
             return
-        elif chosen_map == 'yes':
+        elif f_input == 'yes':
             f_input = True
-        elif chosen_map == 'no':
+        elif f_input == 'no':
             f_input = False
 
-        refresh_rate_input = menu.InputBox(int(y/2.2), int(x/2.2), self.screen, "Refresh rate:")
+        refresh_rate_input = tui.InputBox(int(y/2.2), int(x/2.2), self.screen, "Refresh rate:")
         refresh_rate_input.set_window_size(7, 20)
         refresh_rate = float(refresh_rate_input.display())
 
@@ -178,7 +193,7 @@ class ConsoleSnakeApp(object):
                 print(str(scr_height) + ", " + str(scr_width))
                 sys.exit(1)
 
-            time.sleep(0.03)
+            time.sleep(0.07)
 
         self.screen.clear()
         self.screen.addstr("\n\nGame ended!\n")
@@ -188,12 +203,12 @@ class ConsoleSnakeApp(object):
 
         self.screen.refresh()
 
-        self.game_client.kill.set()
         input_thread.kill.set()
 
         time.sleep(2)
 
         game_curses_pad.clear()
+        self.screen.refresh()
 
 if __name__ == "__main__":
     curses.wrapper(ConsoleSnakeApp)

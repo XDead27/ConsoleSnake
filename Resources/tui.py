@@ -73,6 +73,7 @@ class Menu(TextPanel):
         self.items.append(("exit", "exit"))
 
     def set_items(self, new_items):
+        self.window.clear()
         self.items = new_items
         self.items.append(("exit", "exit"))
 

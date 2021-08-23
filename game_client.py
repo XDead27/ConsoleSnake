@@ -129,9 +129,10 @@ class GameClient(threading.Thread):
             if response_value.get("room_id"):
                 self.current_game_id = response_value.get("room_id")
                 client_log.info("Game ID: " + str(self.current_game_id))
-                # self.join_room(self.current_game_id)
+                return self.current_game_id
             else:
                 client_log.error("Room did not create successfully!")
+                return None
 
         
     def join_room(self, room_id):
@@ -161,6 +162,44 @@ class GameClient(threading.Thread):
             else:
                 client_log.error("Did not join successfully!")
                 return None
+
+    def leave_room(self):
+        action = "leave_room"
+        value = {
+                "room_id": self.current_game_id,
+                "player_id": self.player_id
+            }
+        
+        # Send a new request
+        request = libclient.create_request(action, value)
+        seq = self.place_request(request)
+
+        response = self.wait_for_response(seq)
+
+        response_action = response.get("action")
+        response_value = response.get("value")
+
+        if response_action == "notice":
+            client_log.info(response_value.get("message"))
+
+    def delete_room(self):
+        action = "delete_room"
+        value = {
+                "room_id": self.current_game_id,
+                "player_id": self.player_id
+            }
+
+        # Send a new request
+        request = libclient.create_request(action, value)
+        seq = self.place_request(request)
+
+        response = self.wait_for_response(seq)
+
+        response_action = response.get("action")
+        response_value = response.get("value")
+
+        if response_action == "notice":
+            client_log.info(response_value.get("message"))
 
     def start_game(self, room_id):
         action = "start_game"
