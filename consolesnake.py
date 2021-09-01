@@ -347,9 +347,7 @@ def main(stdscr):
                 last_snake = cs
                 doTheDead(cs)
                 alive -= 1
-            
-            # alive = len(snakes) + len(comp_snakes)
-              
+                          
         doTheWin(last_snake)
         stdscr.nodelay(False)
         stdscr.getch()

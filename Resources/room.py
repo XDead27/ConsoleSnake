@@ -10,7 +10,7 @@ class Room:
         self.refresh_rate = refresh_rate
 
         self.players = []
-        self.host = None    
+        self.host = None  
 
         self.game_state = 0 
 

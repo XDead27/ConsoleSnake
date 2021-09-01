@@ -70,12 +70,12 @@ class Menu(TextPanel):
 
         self.position = 0
         self.items = items
-        self.items.append(("exit", "exit"))
+        self.items.append(("back", "exit"))
 
     def set_items(self, new_items):
         self.window.clear()
         self.items = new_items
-        self.items.append(("exit", "exit"))
+        self.items.append(("back", "exit"))
 
     def navigate(self, n):
         self.position += n
@@ -145,7 +145,7 @@ class InputBox(TextPanel):
             curses.init_pair(70, curses.COLOR_GREEN, curses.COLOR_GREEN)
             curses.init_pair(71, curses.COLOR_CYAN, curses.COLOR_BLACK)
             self.window.addstr(2, 3, self.prompt, curses.A_NORMAL)
-            self.window.addstr(4, 3, " "*15, curses.color_pair(70))
+            self.window.addstr(4, 3, " "*(self.window.getmaxyx()[1]-6), curses.color_pair(70))
         else:
             self.window.addstr(2, 3, self.prompt, curses.A_NORMAL)
         

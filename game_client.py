@@ -151,7 +151,7 @@ class GameClient(threading.Thread):
         response_action = response.get("action")
         response_value = response.get("value")
 
-        if response_action == "notice":
+        if response_action == "room_update":
             client_log.info(response_value.get("message"))
             if response_value.get("player_id"):
                 self.player_id = response_value.get("player_id")
@@ -159,9 +159,31 @@ class GameClient(threading.Thread):
                 client_log.debug("Other players in room: " + str(response_value.get("room_data").get("players")))
                 self.current_game_id = room_id
                 return response_value.get("room_data")
-            else:
-                client_log.error("Did not join successfully!")
-                return None
+        else:
+            client_log.error("Did not join successfully!")
+            return None
+
+    def check_room_updates(self):
+        action = "room_query"
+        value = {
+                "room_id": self.current_game_id
+            }
+
+        # Send a new request
+        request = libclient.create_request(action, value)
+        seq = self.place_request(request)
+
+        response = self.wait_for_response(seq)
+
+        response_action = response.get("action")
+        response_value = response.get("value")
+
+        if response_action == "room_update":
+            return response_value.get("room_data")
+        else:
+            client_log.info(response_value.get("message"))
+            client_log.error("Did not join successfully!")
+            return None
 
     def leave_room(self):
         action = "leave_room"
@@ -200,11 +222,17 @@ class GameClient(threading.Thread):
 
         if response_action == "notice":
             client_log.info(response_value.get("message"))
+            # Return true if room was successfully deleted, false otherwise
+            if response_value.get("ok"):
+                return True
+            else:
+                return False
 
     def start_game(self, room_id):
         action = "start_game"
         value = {
-                "room_id": room_id
+                "room_id": room_id,
+                "player_id": self.player_id
             }
 
         # Send a new request
@@ -226,10 +254,11 @@ class GameClient(threading.Thread):
                 client_log.info("Game ID: " + str(self.current_game_id))
                 game_state = GameState.STARTED
             
-            if response_value.get("colors"):
-                colors = response_value.get("colors")
-
-        return game_state, colors
+                if response_value.get("colors"):
+                    colors = response_value.get("colors")
+                    return game_state, colors
+            else:
+                return GameState.ERROR, None
 
     def query_game(self):
         action = "query"
@@ -273,10 +302,7 @@ class GameClient(threading.Thread):
         response_action = response.get("action")
         response_value = response.get("value")
 
-        # if response_action == "notice":
-        #     client_log.info(response_value.get("message"))
-
-        # return self.query_game()
+        client_log.debug("Input registered: (" + response_action + ") " + response_value)
 
     def query_rooms(self):
         action = "query_rooms"

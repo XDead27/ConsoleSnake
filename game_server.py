@@ -25,6 +25,7 @@ def handle_request(content):
     response_encoding = "utf-8"
 
     global active_rooms
+    global running_games            
 
     if action == "create_room":
         name = value.get("name")
@@ -51,7 +52,7 @@ def handle_request(content):
         if wanted_room is not None:
             player_id = wanted_room.insert_player(player_settings)
 
-            response_action = "notice"
+            response_action = "room_update"
             response_value = {
                     "message": "Succesfully added player to room!",
                     "player_id": player_id,
@@ -61,6 +62,20 @@ def handle_request(content):
             response_action = "notice"
             response_value = {
                     "message": "Room not found!"
+                }
+    elif action == "room_query":
+        room_id = value.get("room_id")
+        wanted_room = active_rooms.get(room_id)
+
+        if wanted_room:
+            response_action = "room_update"
+            response_value = {
+                    "room_data": active_rooms.get(room_id).json_data()
+                }
+        else:
+            response_action = "notice"
+            response_value = {
+                    "message": "Room does not exist!"
                 }
     elif action == "leave_room":
         room_id = value.get("room_id")
@@ -78,34 +93,43 @@ def handle_request(content):
             }
     elif action == "start_game":
         room_id = value.get("room_id")
+        instigator_id = value.get("player_id")
         room_to_start = active_rooms.get(room_id)
-        map = room_to_start.map
-        players = room_to_start.players
-        computers = room_to_start.computers
-        flush_input = room_to_start.f_input
-        refresh = room_to_start.refresh_rate
-        game_id = room_id
 
-        new_game = game.Game(game_id, map, players, computers, flush_input, refresh)
+        if instigator_id == room_to_start.host.get("id"):
+            map = room_to_start.map
+            players = room_to_start.players
+            computers = room_to_start.computers
+            flush_input = room_to_start.f_input
+            refresh = room_to_start.refresh_rate
+            game_id = room_id
 
-        new_game.start()
+            new_game = game.Game(game_id, map, players, computers, flush_input, refresh)
 
-        global running_games            
-        running_games[game_id] = new_game
+            new_game.start()
+            room_to_start.game_state = 1
 
-        response_action = "notice"
-        response_value = {
-                "message": "Game started!",
-                "game_id": game_id,
-                "colors": new_game.getAllColors()
-            }
+            running_games[game_id] = new_game
+
+            response_action = "notice"
+            response_value = {
+                    "message": "Game started!",
+                    "game_id": game_id,
+                    "colors": new_game.getAllColors()
+                }
+        else:
+            response_action = "notice"
+            response_value = {
+                    "message": "You are not the host!"
+                }
     elif action == "query":
         game_id = value.get("game_id")
+        wanted_game = running_games.get(game_id)
         drawn_map = []
 
-        drawn_map = running_games[game_id].field.drawnMap
-        game_state = running_games[game_id].game_state
-        winner = running_games[game_id].game_winner
+        game_state = wanted_game.game_state
+        drawn_map = wanted_game.field.drawnMap
+        winner = wanted_game.game_winner
 
         response_action = "update"
         response_value = {
@@ -113,6 +137,11 @@ def handle_request(content):
                 "game_state": game_state,
                 "winner": winner
             }
+
+        if game_state == 2:
+            running_games.pop(game_id)
+            active_rooms.get(game_id).game_state = 0
+
     elif action == "input":
         game_id = value.get("game_id")
         player_id = value.get("player_id")
@@ -143,17 +172,19 @@ def handle_request(content):
         instigator_id = value.get("player_id")
 
         # Shit security for now
-        if instigator_id in [p['id'] for p in active_rooms.get(room_id).players]:
+        if instigator_id == active_rooms.get(room_id).host.get("id"):
             active_rooms.pop(room_id)
 
             response_action = "notice"
             response_value = {
-                    "message": "Successfully deleted room!"
+                    "message": "Successfully deleted room!",
+                    # Yes I am a ~Programmer~ how could you tell
+                    "ok": True
                 }
         else:
             response_action = "notice"
             response_value = {
-                    "message": "You are not in the said room!"
+                    "message": "You are not the host of the said room!"
                 }
     else:
         print("\033[35m" + "Unknown action!" + "\033[0m")
