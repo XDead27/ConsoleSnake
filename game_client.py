@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import sys
+import sys, os
 import socket
 import selectors
 import traceback
@@ -14,7 +14,12 @@ from game import GameState
 from Resources.snek import Direction
 
 # TODO: maybe extirpate this
-logfile = 'Logs/client.log'
+logfolder = os.environ['HOME'] + '/.local/share/consolesnake/Logs'
+logfile = logfolder + '/client.log'
+
+if not os.path.exists(logfile):
+    os.makedirs(logfolder)
+
 log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
 my_handler = RotatingFileHandler(logfile, mode='a', maxBytes=5*1024*1024, 

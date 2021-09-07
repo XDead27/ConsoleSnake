@@ -7,6 +7,15 @@ from game_client import GameClient, InputThread
 from game import GameState, int_to_string
 from art import text2art
 
+host = '127.0.0.1'
+port = 1403
+
+if len(sys.argv) == 3:
+    host, port = sys.argv[1], int(sys.argv[2])
+elif len(sys.argv) != 1:
+    print("usage:", sys.argv[0], "<host> <port>")
+    sys.exit(1)
+
 def drawField(stdscr, drawn_map, curses_color):
     for x in range(len(drawn_map)):
         for y in range(len(drawn_map[x])):
@@ -22,7 +31,7 @@ class ConsoleSnakeApp(object):
 
 
         # Start connection to server
-        self.game_client = GameClient('127.0.0.1', 1403)
+        self.game_client = GameClient(host, port)
         self.game_client.start()
 
         self.display_start_menu()
