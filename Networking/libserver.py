@@ -37,6 +37,8 @@ class Connection:
         self.response = None
         self._request_handler = request_handler
 
+        self.debug = False
+
     def _set_selector_events_mask(self, mode):
         """Set selector to listen for events: mode is 'r', 'w', or 'rw'."""
         if mode == "r":
@@ -65,7 +67,8 @@ class Connection:
 
     def _write(self):
         if self._send_buffer:
-            print("\033[31m" + "sending" + "\033[0m", repr(self._send_buffer), "to", self.addr, "\n")
+            if self.debug:
+                print("\033[31m" + "sending" + "\033[0m", repr(self._send_buffer), "to", self.addr, "\n")
             try:
                 # Should be ready to write
                 sent = self.sock.send(self._send_buffer)
@@ -184,15 +187,19 @@ class Connection:
         if self.jsonheader["content-type"] == "text/json":
             encoding = self.jsonheader["content-encoding"]
             self.request = _json_decode(data, encoding)
-            print("\033[31m" + "received request" + "\033[0m", repr(self.request), "from", self.addr)
+            if self.debug:
+                print("\033[31m" + "received request" + "\033[0m", repr(self.request), "from", self.addr)
         else:
             # Binary or unknown content-type
             self.request = data
-            print(
-                f'received {self.jsonheader["content-type"]} request from',
-                self.addr,
-            )
-        print(" ")
+            if self.debug:
+                print(
+                    f'received {self.jsonheader["content-type"]} request from',
+                    self.addr,
+                )
+        
+        if self.debug:
+            print(" ")
         # Set selector to listen for write events, we're done reading.
         self._has_response = True
         self.response = self._request_handler(self.request)
@@ -238,4 +245,5 @@ class Connection:
         self.jsonheader = None
         self.request = None
         self._has_response = False
-        print("\n===============================\n")
+        if self.debug:
+            print("\n===============================\n")

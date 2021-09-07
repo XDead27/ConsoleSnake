@@ -92,7 +92,7 @@ class Field:
         ##I should never be allowed to write code again :>
         #Here we just MAKE A NEW PERIMETER so it covers the last one
         #thus erasing its trace :)
-        tempPer = self.addPerimeter(per.height, per.width, per.position, self.blank_number, self.blank_string, 100)
+        tempPer = self.addPerimeter(per.height, per.width, per.position, self.blank_number, self.blank_string, 0)
         self.shapes.remove(tempPer)
         #Then we redraw the last one in the right place
         per.height = newHeight

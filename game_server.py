@@ -83,7 +83,7 @@ def handle_request(content):
 
         wanted_room = active_rooms.get(room_id)
         for idx in range(len(wanted_room.players)):
-            if wanted_room.players[idx].get("id"):
+            if player_id == wanted_room.players[idx].get("id"):
                 del wanted_room.players[idx]
                 break
 
@@ -113,15 +113,23 @@ def handle_request(content):
 
             response_action = "notice"
             response_value = {
-                    "message": "Game started!",
-                    "game_id": game_id,
-                    "colors": new_game.getAllColors()
-                }
+                    "message": "Game started!"
+                    }
         else:
             response_action = "notice"
             response_value = {
                     "message": "You are not the host!"
                 }
+    elif action == "get_game_vars":
+        game_id = value.get("game_id")
+
+        wanted_game = running_games.get(game_id)
+
+        response_action = "notice"
+        response_value = {
+                "message": "Game vars sent!",
+                "colors": wanted_game.getAllColors()
+            }
     elif action == "query":
         game_id = value.get("game_id")
         wanted_game = running_games.get(game_id)
@@ -139,7 +147,7 @@ def handle_request(content):
             }
 
         if game_state == 2:
-            running_games.pop(game_id)
+            # running_games.pop(game_id)
             active_rooms.get(game_id).game_state = 0
 
     elif action == "input":
@@ -200,11 +208,15 @@ def accept_wrapper(sock):
     prot_conn = libserver.Connection(sel, conn, addr, handle_request)
     sel.register(conn, selectors.EVENT_READ, data=prot_conn)
 
-if len(sys.argv) != 3:
+host = '127.0.0.1'
+port = 1403
+
+if len(sys.argv) == 3:
+    host, port = sys.argv[1], int(sys.argv[2])
+elif len(sys.argv) != 1:
     print("usage:", sys.argv[0], "<host> <port>")
     sys.exit(1)
 
-host, port = sys.argv[1], int(sys.argv[2])
 lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # Avoid bind() exception: OSError: [Errno 48] Address already in use
 lsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

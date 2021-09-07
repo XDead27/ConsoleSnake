@@ -95,14 +95,19 @@ class GameClient(threading.Thread):
 
     def wait_for_response(self, wanted_ack):
         client_log.info("Waiting for response with ack {" + str(wanted_ack) + "} ...")
-        while not wanted_ack in self.responses.keys():
+        start_time = time.time()
+        while (not wanted_ack in self.responses.keys()) and time.time() - start_time < 1.0:
             # Do not waste cpu cycles
             time.sleep(0.01)
 
-        client_log.info("Got response with ack {" + str(wanted_ack) + "}. Stopped waiting!")
+        if time.time() - start_time > 1.0:
+            wanted_response = None
+        else:
+            client_log.info("Got response with ack {" + str(wanted_ack) + "}. Stopped waiting!")
 
-        wanted_response = self.responses[wanted_ack]
-        self.responses.pop(wanted_ack)
+            wanted_response = self.responses[wanted_ack]
+            self.responses.pop(wanted_ack)
+
         return wanted_response
 
     def create_room(self, name, map, computers, f_input, refresh_rate):
@@ -182,7 +187,7 @@ class GameClient(threading.Thread):
             return response_value.get("room_data")
         else:
             client_log.info(response_value.get("message"))
-            client_log.error("Did not join successfully!")
+            client_log.error("Did not fetch data successfully!")
             return None
 
     def leave_room(self):
@@ -244,25 +249,15 @@ class GameClient(threading.Thread):
         response_action = response.get("action")
         response_value = response.get("value")
 
-        game_state = GameState.NOT_STARTED
-        colors = []
 
         if response_action == "notice":
             client_log.info(response_value.get("message"))
-            if response_value.get("game_id"):
-                self.current_game_id = response_value.get("game_id")
-                client_log.info("Game ID: " + str(self.current_game_id))
-                game_state = GameState.STARTED
-            
-                if response_value.get("colors"):
-                    colors = response_value.get("colors")
-                    return game_state, colors
-            else:
-                return GameState.ERROR, None
 
-    def query_game(self):
-        action = "query"
-        value = {"game_id": self.current_game_id}
+    def get_game_vars(self, game_id):
+        action = "get_game_vars"
+        value = {
+                "game_id": self.current_game_id
+            }
 
         # Send a new request
         request = libclient.create_request(action, value)
@@ -273,15 +268,43 @@ class GameClient(threading.Thread):
         response_action = response.get("action")
         response_value = response.get("value")
 
-        drawn_map = []
-        winner = ''
+        game_state = GameState.NOT_STARTED
+        colors = None
+
         if response_action == "notice":
-            client_log.error(response_value.get("message"))
-            game_state = GameState.ERROR
-        elif response_action == "update":
-            drawn_map = response_value.get("drawn_map")
-            game_state = response_value.get("game_state")
-            winner = response_value.get("winner")
+            client_log.info(response_value.get("message"))
+            if response_value.get("colors"):
+                client_log.info("Game ID: " + str(self.current_game_id))            
+                colors = response_value.get("colors")
+                game_state = GameState.STARTED
+
+        return game_state, colors
+        
+    def query_game(self):
+        action = "query"
+        value = {"game_id": self.current_game_id}
+
+        # Send a new request
+        request = libclient.create_request(action, value)
+        seq = self.place_request(request)
+
+        drawn_map = []
+        game_state = GameState.ERROR
+        winner = ''
+        
+        response = self.wait_for_response(seq)
+
+        if response:
+            response_action = response.get("action")
+            response_value = response.get("value")
+
+            if response_action == "notice":
+                client_log.error(response_value.get("message"))
+                game_state = GameState.ERROR
+            elif response_action == "update":
+                drawn_map = response_value.get("drawn_map")
+                game_state = response_value.get("game_state")
+                winner = response_value.get("winner")
 
         return drawn_map, game_state, winner
 
@@ -302,7 +325,7 @@ class GameClient(threading.Thread):
         response_action = response.get("action")
         response_value = response.get("value")
 
-        client_log.debug("Input registered: (" + response_action + ") " + response_value)
+        client_log.debug("Input registered: (" + str(response_action) + ") " + str(response_value))
 
     def query_rooms(self):
         action = "query_rooms"
@@ -325,6 +348,9 @@ class GameClient(threading.Thread):
             room_data = response_value.get("room_data")
 
         return room_data
+
+    def is_host_in_room(self, room_data):
+        return self.player_id == room_data.get("host").get("id")
 
     def run(self):
         self.prot_conn = self.start_connection()
@@ -374,12 +400,16 @@ class InputThread(threading.Thread):
 
         while not self.kill.is_set():
             try:
+                client_log.debug("InputThread waiting for input.")
                 input_raw = self.stdscr.getch()
+                client_log.debug("InputThread got input: " + str(input_raw))
             except Exception:
+                client_log.error("In InputThread: " + traceback.format_exc())
                 break
             filtered_input = self.filterInput(input_raw)
+            client_log.debug("InputThread filtered input: " + repr(filtered_input))
 
-            if not filtered_input == None:
+            if filtered_input:
                 self.game_client.send_input(filtered_input)
 
 

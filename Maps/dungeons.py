@@ -1,11 +1,8 @@
 from hashlib import new
 import time
-from art import *
-import sys
 import curses
 import math
 from random import randrange
-sys.path.insert(1, '/home/mrxdead/Documents/Projects/ConsoleSnake')
 from Maps.map import Map
 from Resources.field import Field, Perimeter
 import Resources.fruits as frt

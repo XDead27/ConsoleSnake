@@ -214,3 +214,44 @@ class OptionsBox(TextPanel):
 
             elif key == curses.KEY_DOWN:
                 self.navigate(1)
+
+    def display_async(self):
+        self.panel.top()
+        self.panel.show()
+        self.window.clear()
+        self.window.nodelay(True)
+
+        self.window.refresh()
+        curses.doupdate()
+
+        self.window.addstr(1, 1, self.prompt, curses.A_NORMAL)
+
+        for index, item in enumerate(self.items):
+            if index == self.position:
+                mode = curses.A_REVERSE
+            else:
+                mode = curses.A_NORMAL
+
+            msg = "> %s" % (item)
+            
+            if self.vertical:
+                self.window.addstr(4 + index, 1, msg, mode)
+            else:
+                self.window.addstr(4, 1 + (index*20), msg, mode)  
+                        
+        key = self.window.getch()
+
+        self.window.nodelay(False)
+
+        if key in [curses.KEY_ENTER, ord("\n")]:
+            self.hide()
+            return self.items[self.position]
+
+
+        elif key == curses.KEY_UP:
+            self.navigate(-1)
+
+        elif key == curses.KEY_DOWN:
+            self.navigate(1)
+
+        return None

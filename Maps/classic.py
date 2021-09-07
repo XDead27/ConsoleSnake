@@ -1,8 +1,5 @@
 import time
-from art import *
-import sys
 import curses
-sys.path.insert(1, '/home/mrxdead/Documents/Projects/ConsoleSnake')
 from Maps.map import Map
 from Resources.field import Field
 import Resources.fruits as frt

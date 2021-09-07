@@ -84,41 +84,69 @@ class ConsoleSnakeApp(object):
 
     def display_room(self, room_data):
         while True:
-            player_names = [r.get("name") for r in room_data.get("players")]
+            last_room_data = None
 
             y, x = self.screen.getmaxyx()
-            items = ["PLAYER LIST", "======================", " "]
-            items.extend(player_names)
-            player_list = tui.PanelList(int(y/4), int(x/3), items, self.screen)
-            player_list.display()
 
-            items = ["OPTIONS", "======================", " "]
-            items.append("STATUS: " + int_to_string(room_data.get("game_state")))
-            items.append("MAP: " + room_data.get("map"))
-            items.append("FLUSH?: " + str(room_data.get("flush_input")))
-            items.append("REFRESH: " + str(room_data.get("refresh_rate")))
-            items.append("HOST: " + room_data.get("host_name"))
-            items.append("PLAYERS: " + str(room_data.get("player_count")))
-            options_list = tui.PanelList(int(y/4), int(x/2), items, self.screen)
-            options_list.display()
+            if self.game_client.is_host_in_room(room_data):
+                room_option = tui.OptionsBox(int(y * 4/5), int(x/3), self.screen, "", ["start", "delete"], False)
+                
+            else:
+                room_option = tui.OptionsBox(int(y * 4/5), int(x/3), self.screen, "", [], False)
 
-            # if room_data
-            room_option = tui.OptionsBox(int(y * 4/5), int(x/3), self.screen, "", ["start", "delete"], False)
             room_option.items[-1] = "back"
-            chs = room_option.display()
+            
+            # This is a way so that the client can constantly query for more room information
+            # ~~~FUcc the blocking getch()
 
-            # TODO: Implement a way so that the client can constantly query for more room information
-            # FUcc the blocking getch()
 
-            if chs == 'start':
-                self.play_game(room_data.get("id"))
-            elif chs == 'delete' and self.game_client.delete_room():
-                break
-            elif chs == 'back':
-                self.game_client.leave_room()
-                break
-            player_list.hide()  
-        player_list.hide()  
+            while True:
+                # Initialize/Update display if we have any changes in data
+                if not last_room_data == room_data:
+                    player_names = [r.get("name") for r in room_data.get("players")]
+
+                    items = ["PLAYER LIST", "======================", " "]
+                    items.extend(player_names)
+                    player_list = tui.PanelList(int(y/4), int(x/3), items, self.screen)
+                    player_list.display()
+
+                    items = ["OPTIONS", "======================", " "]
+                    items.append("STATUS: " + int_to_string(room_data.get("game_state")))
+                    items.append("MAP: " + room_data.get("map"))
+                    items.append("FLUSH?: " + str(room_data.get("flush_input")))
+                    items.append("REFRESH: " + str(room_data.get("refresh_rate")))
+                    items.append("HOST: " + room_data.get("host_name"))
+                    items.append("PLAYERS: " + str(room_data.get("player_count")))
+                    options_list = tui.PanelList(int(y/4), int(x/2), items, self.screen)
+                    options_list.display()
+
+                    last_room_data = room_data
+
+                # Display options menu in async mode (it doesn't block)
+                chs = room_option.display_async()
+
+                if chs == 'start':
+                    self.game_client.start_game(room_data.get("id"))
+                elif chs == 'delete' and self.game_client.delete_room():
+                    player_list.hide() 
+                    return
+                elif chs == 'back':
+                    self.game_client.leave_room()
+                    player_list.hide() 
+                    return
+                
+                # Check if something changed
+                room_data = self.game_client.check_room_updates()
+
+                # If game started, start game
+                if room_data.get("game_state") == 1:
+                    self.play_game(room_data.get("id"))
+                    player_list.hide() 
+                    break
+
+                time.sleep(0.1)
+
+            player_list.hide() 
         return
 
     def create_room(self):
@@ -208,7 +236,7 @@ class ConsoleSnakeApp(object):
         curses_color = False
 
         # Start the game
-        game_state, colors = self.game_client.start_game(room_id)
+        game_state, colors = self.game_client.get_game_vars(room_id)
 
         if game_state == GameState.STARTED:
             curses.cbreak()
@@ -260,7 +288,7 @@ class ConsoleSnakeApp(object):
             time.sleep(2)
 
             game_curses_pad.clear()
-            self.screen.refresh()
+            self.screen.clear()
 
 if __name__ == "__main__":
     curses.wrapper(ConsoleSnakeApp)

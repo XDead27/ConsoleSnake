@@ -178,11 +178,12 @@ class Game(threading.Thread):
                         self.field.shapes.remove(fruit)
                         return
 
-        for snake in self.player_snakes.values():
-            if snake.head == snake.head:
-                (snake if snake.length < snake.length else snake).dead = True
-            elif numAtHead == snake.number:
-                snake.dead = True
+        for s in self.player_snakes.values():
+            if not s == snake:
+                if s.head == snake.head:
+                    (s if s.length < snake.length else snake).dead = True
+                elif numAtHead == s.number:
+                    snake.dead = True
 
         snake.dead = True
 
@@ -191,7 +192,6 @@ class Game(threading.Thread):
         # Sync since last update
         probing_time = time.time()
         loops_to_perform = int((probing_time - self.last_update_time) / self.map.refreshRate)
-        # loops_to_perform = 1
 
         for i in range(loops_to_perform):
             # Get states
@@ -217,6 +217,8 @@ class Game(threading.Thread):
                 if self.player_snakes[id].dead:
                     self.alive -= 1
 
+                    #print("Popped - " + self.player_snakes.pop(id, None).name)
+
                     if self.alive <= 0:
                         self.game_state = GameState.STOPPED
                         self.game_winner = self.player_snakes.pop(id, None).name
@@ -231,7 +233,5 @@ class Game(threading.Thread):
     def run(self):
         while not self.game_state == GameState.STOPPED:
             self.update()
-            # Do not waste cpu
+            # Do not waste cpu cycles
             time.sleep(0.01)
-
-        print("Game ended !")

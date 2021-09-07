@@ -52,6 +52,7 @@ class Room:
                 "computers": self.computers,
                 "flush_input": self.f_input,
                 "refresh_rate": self.refresh_rate,
+                "host": self.host,
                 "host_name": self.host_name(),
                 "game_state": self.game_state
             }
