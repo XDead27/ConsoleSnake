@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from art import text2art, tprint
 import curses, time, os
 from collections import deque

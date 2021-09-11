@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import curses, time, sys
 import Resources.utils as utils
 import Resources.tui as tui

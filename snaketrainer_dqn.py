@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from art import *
 import os
 import time
