@@ -145,6 +145,13 @@ class ConsoleSnakeApp(object):
                 # Check if something changed
                 room_data = self.game_client.check_room_updates()
 
+                if room_data.get("game_state") == None:
+                    self.game_client.leave_room()
+                    player_list.hide() 
+                    print(room_data)
+                    time.sleep(0.5)
+                    return
+
                 # If game started, start game
                 if room_data.get("game_state") == 1:
                     self.play_game(room_data.get("id"))
@@ -210,9 +217,11 @@ class ConsoleSnakeApp(object):
         name_input.set_window_size(7, 20)
         self.game_client.settings['name'] = str(name_input.display())
 
+        self.game_client.store_settings()
+
     def change_appearence(self):
         y, x = self.screen.getmaxyx()
-        character_input = tui.InputBox(int(y/2.2), int(x/3), self.screen, prompt="Character: (some characters may not work, for example g)")
+        character_input = tui.InputBox(int(y/2 - 4), int(x/2 - 30), self.screen, prompt="Character: (some characters may not work, for example g)")
         character_input.set_window_size(7, 60)
         self.game_client.settings['aesthetics']['char'] = str(character_input.display())
 
@@ -238,6 +247,7 @@ class ConsoleSnakeApp(object):
                 "bg": head_bg
             }
 
+        self.game_client.store_settings()
 
     def play_game(self, room_id):
         curses_color = False

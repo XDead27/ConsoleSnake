@@ -1,5 +1,5 @@
 __pycache__/
-input_test.py
+player_settings.json
 *.npy
 *.save
 classic_keras.model/

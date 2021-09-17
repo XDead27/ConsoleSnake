@@ -1,5 +1,5 @@
 import sys, os
-import socket
+import socket, json
 import selectors
 import traceback
 import threading, time, curses, random, logging
@@ -47,9 +47,8 @@ class GameClient(threading.Thread):
         self.responses = {}
         self.last_response = None
 
-        # TODO
         self.settings = {
-                "name": 'dani',
+                "name": 'wanderer',
                 "aesthetics": {
                         "char":"x", 
                         "color_tail": {
@@ -62,6 +61,8 @@ class GameClient(threading.Thread):
                             }
                     }
             }
+
+        self.restore_settings()
 
     def start_connection(self):
         addr = (self.host, self.port)
@@ -123,24 +124,27 @@ class GameClient(threading.Thread):
                 "refresh": refresh_rate
             }
 
-        # Send a new request
-        request = libclient.create_request(action, value)
-        seq = self.place_request(request)
+        response_action = None
 
-        response = self.wait_for_response(seq)
+        while response_action == None:
+            # Send a new request
+            request = libclient.create_request(action, value)
+            seq = self.place_request(request)
 
-        response_action = response.get("action")
-        response_value = response.get("value")
+            response = self.wait_for_response(seq)
 
-        if response_action == "notice":
-            client_log.info(response_value.get("message"))
-            if response_value.get("room_id"):
-                self.current_game_id = response_value.get("room_id")
-                client_log.info("Game ID: " + str(self.current_game_id))
-                return self.current_game_id
-            else:
-                client_log.error("Room did not create successfully!")
-                return None
+            response_action = response.get("action")
+            response_value = response.get("value")
+
+            if response_action == "notice":
+                client_log.info(response_value.get("message"))
+                if response_value.get("room_id"):
+                    self.current_game_id = response_value.get("room_id")
+                    client_log.info("Game ID: " + str(self.current_game_id))
+                    return self.current_game_id
+                else:
+                    client_log.error("Room did not create successfully!")
+                    return None
 
         
     def join_room(self, room_id):
@@ -177,21 +181,27 @@ class GameClient(threading.Thread):
                 "room_id": self.current_game_id
             }
 
-        # Send a new request
-        request = libclient.create_request(action, value)
-        seq = self.place_request(request)
 
-        response = self.wait_for_response(seq)
+        response_action = None
 
-        response_action = response.get("action")
-        response_value = response.get("value")
+        while response_action == None:
+            # Send a new request
+            request = libclient.create_request(action, value)
+            seq = self.place_request(request)
 
-        if response_action == "room_update":
-            return response_value.get("room_data")
-        else:
-            client_log.info(response_value.get("message"))
-            client_log.error("Did not fetch data successfully!")
-            return None
+            response = self.wait_for_response(seq)
+
+            response_action = response.get("action")
+            response_value = response.get("value")
+
+            if response_action == "room_update":
+                return response_value.get("room_data")
+            elif response_action == "notice":
+                client_log.info(response_value.get("message"))
+                client_log.error("Room does not exist!")
+                return response_value.get("message")
+            else:
+                client_log.error("Did not fetch data successfully!")
 
     def leave_room(self):
         action = "leave_room"
@@ -319,16 +329,20 @@ class GameClient(threading.Thread):
                 "input": input
             }
 
-        # Send a new request
-        request = libclient.create_request(action, value)
-        seq = self.place_request(request)
+        response_action = None
 
-        response = self.wait_for_response(seq)
+        while response_action == None:
+            # Send a new request
+            request = libclient.create_request(action, value)
+            seq = self.place_request(request)
 
-        response_action = response.get("action")
-        response_value = response.get("value")
+            response = self.wait_for_response(seq)
 
-        client_log.debug("Input registered: (" + str(response_action) + ") " + str(response_value))
+            response_action = response.get("action")
+            response_value = response.get("value")
+
+            if response_action == "notice":
+                client_log.debug("Input registered: (" + str(response_action) + ") " + str(response_value))
 
     def query_rooms(self):
         action = "query_rooms"
@@ -354,6 +368,19 @@ class GameClient(threading.Thread):
 
     def is_host_in_room(self, room_data):
         return self.player_id == room_data.get("host").get("id")
+
+    def store_settings(self):
+        settings_path = "player_settings.json"
+
+        with open(settings_path, 'w') as fileHandle:
+            json.dump(self.settings, fileHandle)
+
+    def restore_settings(self):
+        settings_path = "player_settings.json"
+
+        if os.path.exists(settings_path):
+            with open(settings_path, 'r') as fileHandle:
+                self.settings = json.load(fileHandle)
 
     def run(self):
         self.prot_conn = self.start_connection()

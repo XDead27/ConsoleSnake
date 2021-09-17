@@ -188,7 +188,7 @@ class ANN:
         for epoch in range(n_epoch):
             sum_error = 0
             for row in data:
-                outputs = self.forward_propagate(row)
+                self.forward_propagate(row)
                 expected = [0 for i in range(len(self.nn[-1]))]
                 expected[row[-1]] = 1
                 sum_error += sum([hubert_loss(self.nn[-1][i]['output'], expected[i]) for i in range(len(expected))])
