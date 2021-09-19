@@ -14,3 +14,4 @@ install:
 uninstall:
 	rm -r -I ${DESTDIR}/usr/share/consolesnake
 	rm -i ${DESTDIR}/usr/bin/consolesnake*
+	rm -r -I ${HOME}/.local/share/consolesnake

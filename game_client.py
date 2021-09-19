@@ -370,13 +370,20 @@ class GameClient(threading.Thread):
         return self.player_id == room_data.get("host").get("id")
 
     def store_settings(self):
-        settings_path = "player_settings.json"
+        settings_folder = os.environ['HOME'] + '/.local/share/consolesnake'
+        
+        settings_path = settings_folder + "/player_settings.json"
+
+        if not os.path.exists(settings_folder):
+            os.makedirs(settings_folder)
 
         with open(settings_path, 'w') as fileHandle:
             json.dump(self.settings, fileHandle)
 
     def restore_settings(self):
-        settings_path = "player_settings.json"
+        settings_folder = os.environ['HOME'] + '/.local/share/consolesnake'
+        
+        settings_path = settings_folder + "/player_settings.json"
 
         if os.path.exists(settings_path):
             with open(settings_path, 'r') as fileHandle:
@@ -443,32 +450,32 @@ class InputThread(threading.Thread):
                 self.game_client.send_input(filtered_input)
 
 
-def get_user_request():
-    map = input("Map (classic, duel, survival): ")
-    n_players = int(input("Number of players: "))
-    players = []
-    computers = []
-    for x in range(n_players):
-        name = input("Player " + str(x) + " name: ")
-        # TODO: With aesthetics
-        player_info = {
-                "id": x,
-                "name": name,
-                "aesthetics": {
-                        "char":"x", 
-                        "color_tail": {
-                                "fg": "green", 
-                                "bg": "black"
-                            }, 
-                        "color_head": {
-                                "fg": "green", 
-                                "bg": "green"
-                            }
-                    }
-            }
+# def get_user_request():
+#     map = input("Map (classic, duel, survival): ")
+#     n_players = int(input("Number of players: "))
+#     players = []
+#     computers = []
+#     for x in range(n_players):
+#         name = input("Player " + str(x) + " name: ")
+#         # TODO: With aesthetics
+#         player_info = {
+#                 "id": x,
+#                 "name": name,
+#                 "aesthetics": {
+#                         "char":"x", 
+#                         "color_tail": {
+#                                 "fg": "green", 
+#                                 "bg": "black"
+#                             }, 
+#                         "color_head": {
+#                                 "fg": "green", 
+#                                 "bg": "green"
+#                             }
+#                     }
+#             }
         
-        players.append(player_info)
-    flush_input = bool(input("Flush input?: "))
-    refresh = float(input("Refresh rate: "))
+#         players.append(player_info)
+#     flush_input = bool(input("Flush input?: "))
+#     refresh = float(input("Refresh rate: "))
     
-    return map, players, computers, flush_input, refresh
+#     return map, players, computers, flush_input, refresh

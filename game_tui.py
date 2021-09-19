@@ -41,6 +41,25 @@ class ConsoleSnakeApp(object):
 
         y, x = self.screen.getmaxyx()
 
+        # for the aesthetic
+        banner = text2art("snek", font="impossible")
+
+        # find the size of the banner
+        for line in banner.splitlines():
+            max_len = 0
+            if len(line) > max_len:
+                max_len = len(line)
+
+        try:
+            for y_banner, line in enumerate(banner.splitlines(), int(y/2 - 3 - len(banner.splitlines()))):
+                self.screen.addstr(y_banner, int(x/2 - max_len/2), line)
+        except Exception:
+            # if we cannot draw the banner, do not draw it :)
+            pass
+
+        self.screen.refresh()
+
+        # TODO: maybe make this an options box
         main_menu_items = [
             ("play", self.display_rooms_menu),
             ("settings", self.display_settings_menu),
@@ -50,6 +69,8 @@ class ConsoleSnakeApp(object):
         main_menu.display()
 
     def display_rooms_menu(self):
+        self.screen.clear()
+
         rooms_submenu_items = [("(option) create room", self.create_room), ("(option) refresh", self.refresh_rooms_menu)]
 
         rooms = self.game_client.query_rooms()
@@ -203,6 +224,8 @@ class ConsoleSnakeApp(object):
         return name, chosen_map, f_input, refresh_rate
 
     def display_settings_menu(self):
+        self.screen.clear()
+
         settings_submenu_items = [("change naem", self.change_name), ("change aEStHethiCs", self.change_appearence)]         
 
         y, x = self.screen.getmaxyx()

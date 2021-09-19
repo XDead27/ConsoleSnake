@@ -22,7 +22,6 @@ class TextPanel(object):
     def display(self):
         self.panel.top()
         self.panel.show()
-        self.window.clear()
         self.window.refresh()
         curses.doupdate()
 
