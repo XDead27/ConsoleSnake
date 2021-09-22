@@ -1,9 +1,9 @@
 
-.PHONY requirements
+.PHONY: requirements
 requirements:
 	pip3 install -r requirements.txt
 
-.PHONY install
+.PHONY: install
 install:
 	install -d ${DESTDIR}/usr/share/consolesnake/Networking ${DESTDIR}/usr/share/consolesnake/Maps ${DESTDIR}/usr/share/consolesnake/Resources ${DESTDIR}/usr/bin/
 	install game_tui.py game_client.py game_server.py game.py ${DESTDIR}/usr/share/consolesnake/
