@@ -4,15 +4,21 @@ import Resources.tui as tui
 from game_client import GameClient, InputThread
 from game import GameState, int_to_string
 from art import text2art
+import argparse as ap
 
 host = '127.0.0.1'
 port = 1403
 
-if len(sys.argv) == 3:
-    host, port = sys.argv[1], int(sys.argv[2])
-elif len(sys.argv) != 1:
-    print("usage:", sys.argv[0], "<host> <port>")
-    sys.exit(1)
+# Parse flags and arguments
+parser = ap.ArgumentParser(description='Snek gaem with frends :>')
+parser.add_argument("-p", "--port", type=int, default=1403, help="Port to connect to")
+parser.add_argument("-b", "--host", default="127.0.0.1", help="Host ip address to connect to")
+parser.add_argument("-c", "--curses-refresh", type=float, default=0.07, help="Maximum refresh rate for curses")
+
+args = parser.parse_args()
+
+host = args.host
+port = args.port
 
 def drawField(stdscr, drawn_map, curses_color):
     for x in range(len(drawn_map)):
@@ -23,10 +29,27 @@ def drawField(stdscr, drawn_map, curses_color):
                 stdscr.addstr(text2art(drawn_map[x][y][0], font='cjk'))
         stdscr.addstr('\n')
 
+def displayScore(stdscr, score):
+    stdscr.addstr("\nScore:\n")
+    for line in score:
+        name = line.get("name")
+        score = line.get("score")
+        
+        stdscr.addstr(">> " + name + ':\t' + str(score))
+        stdscr.addstr('\n')
+
+def displayError(stdscr, error):
+    stdscr.clear()
+    stdscr.addstr("\nERROR:\n\t" + error)
+    stdscr.refresh()
+
+    time.sleep(3)
+
+
 class ConsoleSnakeApp(object):
     def __init__(self, stdscreen):
         self.screen = stdscreen
-
+        self.error_counter = 0
 
         # Start connection to server
         self.game_client = GameClient(host, port)
@@ -35,6 +58,31 @@ class ConsoleSnakeApp(object):
         self.display_start_menu()
 
         self.game_client.kill.set()
+
+    # Wrapper function (?) that executes a function <iters> times
+    # If the function returns a value in <error_msg> or raises an exception
+    # this function will try to run it a few more times until giving up
+    #
+    # Probably a monstruosity 
+    def exec_try_n_times(self, handle, iters):
+        while self.error_counter < iters:
+            try:
+                data, error_msg = handle()
+
+                if not error_msg:
+                    self.error_counter = 0
+                    return data
+                self.error_counter += 1
+            except Exception as e:
+                self.error_counter += 1
+                if self.error_counter == iters:
+                    error_msg = repr(e)  
+                continue
+
+        self.error_counter = 0
+        displayError(self.screen, error_msg)
+
+        raise RuntimeError("Could not run function!")
 
     def display_start_menu(self):
         curses.curs_set(0)
@@ -73,7 +121,10 @@ class ConsoleSnakeApp(object):
 
         rooms_submenu_items = [("(option) create room", self.create_room), ("(option) refresh", self.refresh_rooms_menu)]
 
-        rooms = self.game_client.query_rooms()
+        try:
+            rooms = self.exec_try_n_times(self.game_client.query_rooms, 3)
+        except RuntimeError:
+            return
 
         for room in rooms:
             room_name = "(" + str(room.get("player_count")) + "/2) " + room.get("name")
@@ -92,9 +143,14 @@ class ConsoleSnakeApp(object):
         self.rooms_player_count.hide()
 
     def refresh_rooms_menu(self):
+        self.screen.clear()
+
         rooms_submenu_items = [("(option) create room", self.create_room), ("(option) refresh", self.refresh_rooms_menu)]
 
-        rooms = self.game_client.query_rooms()
+        try:
+            rooms = self.exec_try_n_times(self.game_client.query_rooms, 3)
+        except RuntimeError:
+            return
 
         for room in rooms:
             room_name = "(" + str(room.get("player_count")) + "/2) " + room.get("name")
@@ -106,11 +162,19 @@ class ConsoleSnakeApp(object):
         self.rooms_submenu.set_items(rooms_submenu_items)
     
     def join_room(self, room_id):
-        room_data = self.game_client.join_room(room_id)
+        try:
+            room_data = self.exec_try_n_times(lambda: self.game_client.join_room(room_id), 3)
+        except RuntimeError:
+            return
 
         self.display_room(room_data)
 
+        self.screen.clear()
+        self.screen.refresh()
+
     def display_room(self, room_data):
+        self.screen.clear()
+        
         while True:
             last_room_data = None
 
@@ -136,6 +200,7 @@ class ConsoleSnakeApp(object):
                     items = ["PLAYER LIST", "======================", " "]
                     items.extend(player_names)
                     player_list = tui.PanelList(int(y/4), int(x/3), items, self.screen)
+                    player_list.set_window_size(20, 40)
                     player_list.display()
 
                     items = ["OPTIONS", "======================", " "]
@@ -146,6 +211,7 @@ class ConsoleSnakeApp(object):
                     items.append("HOST: " + room_data.get("host_name"))
                     items.append("PLAYERS: " + str(room_data.get("player_count")))
                     options_list = tui.PanelList(int(y/4), int(x/2), items, self.screen)
+                    options_list.set_window_size(20, 30)
                     options_list.display()
 
                     last_room_data = room_data
@@ -154,24 +220,44 @@ class ConsoleSnakeApp(object):
                 chs = room_option.display_async()
 
                 if chs == 'start':
-                    self.game_client.start_game(room_data.get("id"))
-                elif chs == 'delete' and self.game_client.delete_room():
-                    player_list.hide() 
-                    return
+                    try:
+                        self.exec_try_n_times(lambda: self.game_client.start_game(room_data.get("id")), 3)
+                    except RuntimeError:
+                        chs = 'back'
+                elif chs == 'delete': 
+                    try:
+                        deleted_successfully = self.exec_try_n_times(self.game_client.delete_room, 3)
+                    except RuntimeError:
+                        return
+                    finally:
+                        if not deleted_successfully:
+                            displayError(self.screen, "The room was not deleted successfully!")
+
+                        player_list.hide() 
+                        return
                 elif chs == 'back':
-                    self.game_client.leave_room()
+                    try:
+                        self.exec_try_n_times(self.game_client.leave_room, 10)
+                    except RuntimeError:
+                        return
+                    
                     player_list.hide() 
                     return
                 
                 # Check if something changed
-                room_data = self.game_client.check_room_updates()
-
-                if room_data.get("game_state") == None:
-                    self.game_client.leave_room()
+                try:
+                    room_data = self.exec_try_n_times(self.game_client.check_room_updates, 3)
+                except RuntimeError:
+                    try:
+                        self.exec_try_n_times(self.game_client.leave_room, 10)
+                    except RuntimeError:
+                        return
+                    
                     player_list.hide() 
                     print(room_data)
-                    time.sleep(0.5)
+                    time.sleep(2)
                     return
+
 
                 # If game started, start game
                 if room_data.get("game_state") == 1:
@@ -179,7 +265,7 @@ class ConsoleSnakeApp(object):
                     player_list.hide() 
                     break
 
-                time.sleep(0.1)
+                time.sleep(max(0.1, args.curses_refresh))
 
             player_list.hide() 
         return
@@ -187,12 +273,19 @@ class ConsoleSnakeApp(object):
     def create_room(self):
         name, map, f_input, refresh_rate = self.display_create_room_dialog()
 
-        room_id = self.game_client.create_room(name, map, [], f_input, refresh_rate)
+        
+        exec_create = lambda:   self.game_client.create_room(name, map, [], f_input, refresh_rate)
+    
+        try:
+            room_id = self.exec_try_n_times(exec_create, 3)
+        except RuntimeError:
+            return
 
         self.refresh_rooms_menu()
         self.join_room(room_id)
 
     def display_create_room_dialog(self):
+        self.screen.clear()
         y, x = self.screen.getmaxyx()
 
         name_dialog = tui.InputBox(int(y/2)-3, int(x/2)-10, self.screen, "Name for room:")
@@ -235,6 +328,8 @@ class ConsoleSnakeApp(object):
 
     # Make permanent
     def change_name(self):
+        self.screen.clear()
+
         y, x = self.screen.getmaxyx()
         name_input = tui.InputBox(int(y/2.2), int(x/2.2), self.screen, prompt="New name:")
         name_input.set_window_size(7, 20)
@@ -243,6 +338,8 @@ class ConsoleSnakeApp(object):
         self.game_client.store_settings()
 
     def change_appearence(self):
+        self.screen.clear()
+        
         y, x = self.screen.getmaxyx()
         character_input = tui.InputBox(int(y/2 - 4), int(x/2 - 30), self.screen, prompt="Character: (some characters may not work, for example g)")
         character_input.set_window_size(7, 60)
@@ -273,10 +370,18 @@ class ConsoleSnakeApp(object):
         self.game_client.store_settings()
 
     def play_game(self, room_id):
+        self.screen.clear()
+        
         curses_color = False
 
         # Start the game
-        game_state, colors = self.game_client.get_game_vars(room_id)
+        try:
+            game_state, colors = self.exec_try_n_times(lambda: self.game_client.get_game_vars(room_id), 3)
+        except RuntimeError:
+            return
+        
+        winner = None
+        curses_refresh = max(0.07, args.curses_refresh)
 
         if game_state == GameState.STARTED:
             curses.cbreak()
@@ -296,10 +401,14 @@ class ConsoleSnakeApp(object):
             input_thread.start()
             
             while game_state == GameState.STARTED:
-                drawn_map, game_state, winner = self.game_client.query_game()
+                try:
+                    drawn_map, game_state, winner, score_data = self.exec_try_n_times(self.game_client.query_game, 3)
+                except RuntimeError:
+                    break
 
                 game_curses_pad.clear()
                 drawField(game_curses_pad, drawn_map, curses_color)
+                displayScore(game_curses_pad, score_data)
 
                 # Update screen size
                 scr_height, scr_width = self.screen.getmaxyx()
@@ -313,19 +422,19 @@ class ConsoleSnakeApp(object):
                     print(str(scr_height) + ", " + str(scr_width))
                     sys.exit(1)
 
-                time.sleep(0.07)
+                time.sleep(curses_refresh)
 
             self.screen.clear()
-            self.screen.addstr("\n\nGame ended!\n")
 
             if winner:
+                self.screen.addstr("\n\nGame ended!\n")
                 self.screen.addstr(winner + " WON!!!!")
 
-            self.screen.refresh()
+                self.screen.refresh()
+
+                time.sleep(2)
 
             input_thread.kill.set()
-
-            time.sleep(2)
 
             game_curses_pad.clear()
             self.screen.clear()

@@ -47,9 +47,6 @@ class Game(threading.Thread):
         # The 'hashmap' 
         self.player_snakes = {}
 
-        # Deprecated??
-        # self.snakes = deque([])
-
         # Add players
         for i in range(len(players)):
             id = players[i].get("id")
@@ -137,6 +134,27 @@ class Game(threading.Thread):
 
     def getAllColors(self):
         return self.colorSettings
+
+    def getScores(self):
+        scores = []
+
+        for snake in self.player_snakes.values():
+            this_score = {
+                "name": snake.name,
+                "score": snake.getScore()
+            }
+            scores.append(this_score)
+
+        for snake in self.comp_snakes:
+            this_score = {
+                "name": snake.name,
+                "score": snake.getScore()
+            }
+            scores.append(this_score)
+
+        return scores
+
+        
 
     # Place input (player_id, input)
     def placeInput(self, player_id, input):

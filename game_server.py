@@ -136,12 +136,14 @@ def handle_request(content):
         game_state = wanted_game.game_state
         drawn_map = wanted_game.field.drawnMap
         winner = wanted_game.game_winner
+        score = wanted_game.getScores()
 
         response_action = "update"
         response_value = {
                 "drawn_map": drawn_map,
                 "game_state": game_state,
-                "winner": winner
+                "winner": winner,
+                "score_data": score
             }
 
         if game_state == 2:

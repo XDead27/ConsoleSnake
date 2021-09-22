@@ -14,6 +14,7 @@ class TextPanel(object):
         panel.update_panels()
 
     def set_window_size(self, y, x):
+        self.window.clear()
         self.window = self.stdscreen.subwin(y, x, self.spawn_y, self.spawn_x)
         self.panel = panel.new_panel(self.window)
         self.panel.hide()
@@ -57,6 +58,11 @@ class PanelList(TextPanel):
     def add_entry(self, item):
         self.items.append(item)
         self.refresh()
+
+    def set_window_size(self, y, x):
+        super(PanelList, self).set_window_size(y, x)
+        self.window.border(0, 0, 0, 0, 0, 0, 0, 0)
+        panel.update_panels()
 
 class Menu(TextPanel):
     def __init__(self, items, spawn_y, spawn_x, stdscreen, vertical = True):
