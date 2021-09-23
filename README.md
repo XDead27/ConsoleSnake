@@ -6,9 +6,11 @@
 
 A multiplayer snake game with a TUI, written in python.
 
-![Demo](https://user-images.githubusercontent.com/32306451/134489222-d6fceaeb-ed6f-47d1-a47e-a4558c3b1837.png)
+![Demo](https://user-images.githubusercontent.com/32306451/134492672-319f0067-ee8a-487d-8487-d8d8d329d349.gif)
 
 The terminal in the demo above is a customized termite.
+
+![Demo](https://user-images.githubusercontent.com/32306451/134492701-5b0d8267-3faa-448b-9596-15c61418e60a.gif)
 
 ## Installation
 
