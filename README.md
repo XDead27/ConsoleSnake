@@ -59,6 +59,13 @@ $ pip3 install numpy art argparse
 The app is divided into the client (`consolesnake`) and the server (`consolesnake-server`).
 To run the game, you need to connect to a server, either online or on your local machine.
 
+#### TL;DR 
+Run these 2 commands in different terminal instances:
+```
+$ consolesnake-client
+$ consolesnake
+```
+
 ### Server
 
 The binary is named `consolesnake-server`.
