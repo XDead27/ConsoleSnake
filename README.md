@@ -20,7 +20,7 @@ The project is not yet in any repositories. You can find the packages on the [re
 
 1. Download the binary from the [releases page](https://github.com/XDead27/ConsoleSnake/releases).
 
-2. Install the package using `packman`.
+2. Install the package using `pacman`.
 ```
 # pacman -U /path/to/binary
 ```
@@ -62,7 +62,7 @@ To run the game, you need to connect to a server, either online or on your local
 #### TL;DR 
 Run these 2 commands in different terminal instances:
 ```
-$ consolesnake-client
+$ consolesnake-server
 $ consolesnake
 ```
 
