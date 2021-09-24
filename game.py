@@ -154,8 +154,6 @@ class Game(threading.Thread):
 
         return scores
 
-        
-
     # Place input (player_id, input)
     def placeInput(self, player_id, input):
         self.inputs[player_id] = input

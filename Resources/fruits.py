@@ -139,7 +139,7 @@ class ObstacleFruit(Fruit):
         while not map.field.getNumAt(end) == map.field.blank_number:
             end = [p.position[0] + randrange(1, p.height - 1), p.position[1] + randrange(1, p.width - 1)]
 
-        newSegment = map.field.addSegment(start, end, -1, 's', 101)
+        map.field.addSegment(start, end, -1, 's', 31)
 
     def getColor(self):
         return {

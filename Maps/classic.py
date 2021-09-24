@@ -25,8 +25,8 @@ class Classic(Map):
 
         self.lastNumberOfFruits = [0] * len(self.fruitSpawners)
 
-        self.maxPlayers = 2
         self.spawnLocations = [[1, 1], [3, 3], [5, 5], [7, 7], [9, 5], [11, 3], [13, 1], [18, 18], [11, 9], [7, 13]]
+        self.maxPlayers = len(self.spawnLocations)
 
     def getSpecificColors(self):
         specific_colors = super(Classic, self).getSpecificColors() 

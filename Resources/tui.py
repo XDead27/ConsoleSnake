@@ -2,20 +2,23 @@ import curses
 from curses import panel
 
 class TextPanel(object):
-    def __init__(self, spawn_y, spawn_x, stdscreen):
+    def __init__(self, spawn_y, spawn_x, stdscreen, size_y = 20, size_x = 50):
         self.stdscreen = stdscreen
 
         self.spawn_y = spawn_y
         self.spawn_x = spawn_x
 
-        self.window = stdscreen.subwin(spawn_y, spawn_x)
+        self.size_y = size_y
+        self.size_x = size_x
+
+        self.window = stdscreen.subwin(size_y, size_x, spawn_y - int(size_y/2), spawn_x - int(size_x/2))
         self.panel = panel.new_panel(self.window)
         self.panel.hide()
         panel.update_panels()
 
-    def set_window_size(self, y, x):
+    def set_window_size(self, size_y, size_x):
         self.window.clear()
-        self.window = self.stdscreen.subwin(y, x, self.spawn_y, self.spawn_x)
+        self.window = self.stdscreen.subwin(size_y, size_x, self.spawn_y - int(size_y/2), self.spawn_x - int(size_x/2))
         self.panel = panel.new_panel(self.window)
         self.panel.hide()
         panel.update_panels()
@@ -38,8 +41,8 @@ class TextPanel(object):
         curses.doupdate()
 
 class PanelList(TextPanel):
-    def __init__(self, spawn_y, spawn_x, items, stdscreen):
-        super(PanelList, self).__init__(spawn_y, spawn_x, stdscreen)
+    def __init__(self, spawn_y, spawn_x, items, stdscreen, size_y = 20, size_x = 50):
+        super(PanelList, self).__init__(spawn_y, spawn_x, stdscreen, size_y, size_x)
 
         self.items = items
         self.window.border(0, 0, 0, 0, 0, 0, 0, 0)
@@ -65,8 +68,8 @@ class PanelList(TextPanel):
         panel.update_panels()
 
 class Menu(TextPanel):
-    def __init__(self, items, spawn_y, spawn_x, stdscreen, vertical = True):
-        super(Menu, self).__init__(spawn_y, spawn_x, stdscreen)
+    def __init__(self, items, spawn_y, spawn_x, stdscreen, vertical = True, size_y = 20, size_x = 50):
+        super(Menu, self).__init__(spawn_y, spawn_x, stdscreen, size_y, size_x)
 
         self.window.keypad(1)
         self.vertical = vertical
@@ -90,7 +93,7 @@ class Menu(TextPanel):
     def display(self):
         self.panel.top()
         self.panel.show()
-        self.window.clear()
+        # self.window.clear()
 
         while True:
             self.window.refresh()
@@ -125,8 +128,8 @@ class Menu(TextPanel):
         self.hide()
 
 class InputBox(TextPanel):
-    def __init__(self, y, x, stdscreen, prompt):
-        super(InputBox, self).__init__(y, x, stdscreen)
+    def __init__(self, y, x, stdscreen, prompt, size_y = 20, size_x = 50):
+        super(InputBox, self).__init__(y, x, stdscreen, size_y, size_x)
 
         curses.curs_set(1)
         self.window.keypad(1)
@@ -163,8 +166,8 @@ class InputBox(TextPanel):
         return bytes.decode(got_string)
 
 class OptionsBox(TextPanel):
-    def __init__(self, y, x, stdscreen, prompt, items, vertical=True):
-        super(OptionsBox, self).__init__(y, x, stdscreen)
+    def __init__(self, y, x, stdscreen, prompt, items, vertical=True, size_y = 20, size_x = 50):
+        super(OptionsBox, self).__init__(y, x, stdscreen, size_y, size_x)
 
         self.window.keypad(1)
         self.vertical = vertical
@@ -184,7 +187,6 @@ class OptionsBox(TextPanel):
     def display(self):
         self.panel.top()
         self.panel.show()
-        self.window.clear()
 
         while True:
             self.window.refresh()
@@ -193,6 +195,8 @@ class OptionsBox(TextPanel):
             self.window.addstr(1, 1, self.prompt, curses.A_NORMAL)
 
             for index, item in enumerate(self.items):
+                # In case the screen is too small
+                overflow = 0
                 if index == self.position:
                     mode = curses.A_REVERSE
                 else:
@@ -200,10 +204,14 @@ class OptionsBox(TextPanel):
 
                 msg = "> %s" % (item)
                 
+                if (not self.vertical and (1 + (index*20)) >= self.size_x) or (self.vertical and (4 + index) >= self.size_y):
+                    overflow += 1
+                    index = 0
+
                 if self.vertical:
-                    self.window.addstr(4 + index, 1, msg, mode)
+                    self.window.addstr(4 + index, 1 + (overflow*20), msg, mode)
                 else:
-                    self.window.addstr(4, 1 + (index*20), msg, mode)  
+                    self.window.addstr(4 + overflow, 1 + (index*20), msg, mode)  
                           
             key = self.window.getch()
 
