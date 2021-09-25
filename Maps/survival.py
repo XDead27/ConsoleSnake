@@ -10,14 +10,22 @@ class Survival(Map):
     def __init__(self):
         super(Survival, self).__init__()
 
-        self.field = Field(20, 20, 0, '  ')
-        self.p1 = self.field.addPerimeter(20, 20, [0, 0], -1, 's', 31)
+        self.DEFAULT_SIZE = 15
+        self.height = self.width = self.DEFAULT_SIZE
+        self.maxPlayers = 4
+
+        self.reset()
+
+    def reset(self):
+        super(Survival, self).reset()
+
+        self.field = Field(self.height + 1, self.width + 1, 0, '  ')
+        self.p1 = self.field.addPerimeter(self.height, self.width, [0, 0], -1, 's', 31)
         self.obstacles.append(self.p1)
 
         #Specific to this map
         self.coords = []
         self.iters = 0
-        self.DEFAULT_SIZE = 15
 
         #Setup spawners
         fs1 = frt.FruitSpawner(frt.Plus1Fruit)
@@ -33,10 +41,8 @@ class Survival(Map):
         self.fruitSpawners.append(fs1)
         self.fruitSpawners.append(fs2)
 
-        self.lastNumberOfFruits = [0] * len(self.fruitSpawners)
-
-        self.maxPlayers = 4
         self.spawnLocations = [[1, 1], [3, 3], [5, 5], [7, 7]]
+        self.lastNumberOfFruits = [0] * len(self.fruitSpawners)
 
     def getSpecificColors(self):
         specific_colors = super(Survival, self).getSpecificColors() 
@@ -45,6 +51,36 @@ class Survival(Map):
             {"number": 31, "fg": "white", "bg": "black"}
         ])
         return specific_colors
+
+    def getSpecificOptions(self):
+        opt = super(Survival, self).getSpecificOptions()
+
+        new_opt = {
+            "height": self.height,
+            "width": self.width
+        }
+
+        opt.update(new_opt)
+
+        return opt
+
+    # Maybe do better?
+    def setOptions(self, options):
+        super(Survival, self).setOptions(options)
+        if options.get("height"):
+            self.height = self.DEFAULT_SIZE if int(options.get("height")) <= 4 else int(options.get("height"))
+
+        if options.get("width"):
+            self.width = self.DEFAULT_SIZE if int(options.get("width")) <= 4 else int(options.get("width"))
+
+        self.field.setDimensions(self.height + 1, self.width + 1)
+        self.field.reset()
+        self.field.shapes.remove(self.p1)
+        self.p1 = self.field.addPerimeter(self.height, self.width, [0, 0], -1, 's', 101)
+        self.field.refresh()
+
+        for fs in self.fruitSpawners:
+            fs.bindAreaToPerimeter(self.p1)
 
     # def askForParams(self, stdscr):
     #     super(Survival, self).askForParams(stdscr)

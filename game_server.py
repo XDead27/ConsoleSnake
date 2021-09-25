@@ -26,17 +26,28 @@ def handle_request(content):
     global running_games            
 
     if action == "create_room":
+        # Get all variables from the request
         name = value.get("name")
-        map = value.get("map")
+        map_name = value.get("map")
         computers = value.get("computers")
         flush_input = value.get("f_input")
         refresh = value.get("refresh")
         game_id = random.randint(99, 999)
 
-        new_room = room.Room(game_id, name, map, computers, flush_input, refresh)
+        # Create a map instance
+        #
+        #   This way we can have access to specific options and previews
+        m = __import__("Maps." + map_name)
+        m = getattr(m, map_name)
+
+        map_instance = getattr(m, map_name.capitalize())()
+
+        # Create a new room with the specified parameters
+        new_room = room.Room(game_id, name, map_name, map_instance, computers, flush_input, refresh)
 
         active_rooms[game_id] = new_room
 
+        # Return the room_id in a new response
         response_action = "notice"
         response_value = {
                 "message": "Room created!",
@@ -60,6 +71,23 @@ def handle_request(content):
             response_action = "notice"
             response_value = {
                     "message": "Room not found!"
+                }
+    elif action == "update_room_options":
+        room_id = value.get("room_id")
+        wanted_room = active_rooms.get(room_id)
+
+        if wanted_room:
+            new_options = value.get("room_options")
+            wanted_room.map_instance.setOptions(new_options)
+
+            response_action = "room_update"
+            response_value = {
+                    "room_data": active_rooms.get(room_id).json_data()
+                }
+        else:
+            response_action = "notice"
+            response_value = {
+                    "message": "Room does not exist!"
                 }
     elif action == "room_query":
         room_id = value.get("room_id")
@@ -95,14 +123,14 @@ def handle_request(content):
         room_to_start = active_rooms.get(room_id)
 
         if instigator_id == room_to_start.host.get("id"):
-            map = room_to_start.map
+            map_instance = room_to_start.map_instance
             players = room_to_start.players
             computers = room_to_start.computers
             flush_input = room_to_start.f_input
             refresh = room_to_start.refresh_rate
             game_id = room_id
 
-            new_game = game.Game(game_id, map, players, computers, flush_input, refresh)
+            new_game = game.Game(game_id, map_instance, players, computers, flush_input, refresh)
 
             new_game.start()
             room_to_start.game_state = 1

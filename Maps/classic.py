@@ -9,10 +9,16 @@ class Classic(Map):
     def __init__(self):
         super(Classic, self).__init__()
 
-        self.DEFAULT_SIZE = 20
+        self.DEFAULT_SIZE = 12
+        self.height = self.width = self.DEFAULT_SIZE
+        self.maxPlayers = len(self.spawnLocations)
 
-        self.field = Field(self.DEFAULT_SIZE + 1, self.DEFAULT_SIZE + 1, 0, '  ')
-        self.p1 = self.field.addPerimeter(self.DEFAULT_SIZE, self.DEFAULT_SIZE, [0, 0], -1, 's', 31)
+        self.reset()        
+
+    def reset(self):
+        super(Classic, self).reset()
+        self.field = Field(self.height + 1, self.width + 1, 0, '  ')
+        self.p1 = self.field.addPerimeter(self.height, self.width, [0, 0], -1, 's', 31)
         self.obstacles.append(self.p1)
 
         #Setup spawners
@@ -23,10 +29,9 @@ class Classic(Map):
 
         self.fruitSpawners.append(self.fs1)
 
+        self.spawnLocations = [[1, 1], [3, 3], [5, 5], [7, 7], [9, 5], [11, 3], [13, 1], [18, 18], [11, 9], [7, 13]]
         self.lastNumberOfFruits = [0] * len(self.fruitSpawners)
 
-        self.spawnLocations = [[1, 1], [3, 3], [5, 5], [7, 7], [9, 5], [11, 3], [13, 1], [18, 18], [11, 9], [7, 13]]
-        self.maxPlayers = len(self.spawnLocations)
 
     def getSpecificColors(self):
         specific_colors = super(Classic, self).getSpecificColors() 
@@ -34,6 +39,35 @@ class Classic(Map):
             {"number": 31, "fg": "white", "bg": "black"}
         ])
         return specific_colors
+
+    def getSpecificOptions(self):
+        opt = super(Classic, self).getSpecificOptions()
+
+        new_opt = {
+            "height": self.height,
+            "width": self.width
+        }
+
+        opt.update(new_opt)
+
+        return opt
+
+    # Maybe do better?
+    def setOptions(self, options):
+        super(Classic, self).setOptions(options)
+        if options.get("height"):
+            self.height = self.DEFAULT_SIZE if int(options.get("height")) <= 4 else int(options.get("height"))
+
+        if options.get("width"):
+            self.width = self.DEFAULT_SIZE if int(options.get("width")) <= 4 else int(options.get("width"))
+
+        self.field.setDimensions(self.height + 1, self.width + 1)
+        self.field.reset()
+        self.field.shapes.remove(self.p1)
+        self.p1 = self.field.addPerimeter(self.height, self.width, [0, 0], -1, 's', 31)
+        self.fs1.bindAreaToPerimeter(self.p1)
+        self.field.refresh()
+
 
     # def askForParams(self, stdscr):
     #     super(Classic, self).askForParams(stdscr)

@@ -179,6 +179,21 @@ class GameClient(threading.Thread):
 
         return data, error_msg
 
+    def set_room_options(self, room_options):
+        action = "update_room_options"
+        value = {
+                "room_id": self.current_game_id,
+                "room_options": room_options
+            }
+
+        response_action, response_value, error_msg = self.send_message(action, value)
+
+        if response_action == "notice":
+            error_msg = response_value.get("message")
+            client_log.error(error_msg)
+
+        return response_value, error_msg
+
     def check_room_updates(self):
         action = "room_query"
         value = {

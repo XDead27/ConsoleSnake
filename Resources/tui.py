@@ -2,7 +2,7 @@ import curses
 from curses import panel
 
 class TextPanel(object):
-    def __init__(self, spawn_y, spawn_x, stdscreen, size_y = 20, size_x = 50):
+    def __init__(self, spawn_y, spawn_x, stdscreen, size_y = 20, size_x = 50, border = False):
         self.stdscreen = stdscreen
 
         self.spawn_y = spawn_y
@@ -13,6 +13,11 @@ class TextPanel(object):
 
         self.window = stdscreen.subwin(size_y, size_x, spawn_y - int(size_y/2), spawn_x - int(size_x/2))
         self.panel = panel.new_panel(self.window)
+
+        self.border = border
+        if self.border:
+           self.window.border(*self.border)
+
         self.panel.hide()
         panel.update_panels()
 
@@ -26,6 +31,8 @@ class TextPanel(object):
     def display(self):
         self.panel.top()
         self.panel.show()
+        if self.border:
+            self.stdscreen.border(*self.border)
         self.window.refresh()
         curses.doupdate()
 
@@ -41,11 +48,10 @@ class TextPanel(object):
         curses.doupdate()
 
 class PanelList(TextPanel):
-    def __init__(self, spawn_y, spawn_x, items, stdscreen, size_y = 20, size_x = 50):
-        super(PanelList, self).__init__(spawn_y, spawn_x, stdscreen, size_y, size_x)
+    def __init__(self, spawn_y, spawn_x, items, stdscreen, size_y = 20, size_x = 50, border = False):
+        super(PanelList, self).__init__(spawn_y, spawn_x, stdscreen, size_y, size_x, border)
 
         self.items = items
-        self.window.border(0, 0, 0, 0, 0, 0, 0, 0)
         self.display()
 
     def display(self):
@@ -68,8 +74,8 @@ class PanelList(TextPanel):
         panel.update_panels()
 
 class Menu(TextPanel):
-    def __init__(self, items, spawn_y, spawn_x, stdscreen, vertical = True, size_y = 20, size_x = 50):
-        super(Menu, self).__init__(spawn_y, spawn_x, stdscreen, size_y, size_x)
+    def __init__(self, items, spawn_y, spawn_x, stdscreen, vertical = True, size_y = 20, size_x = 50, border=False):
+        super(Menu, self).__init__(spawn_y, spawn_x, stdscreen, size_y, size_x, border)
 
         self.window.keypad(1)
         self.vertical = vertical
@@ -77,6 +83,7 @@ class Menu(TextPanel):
         self.position = 0
         self.items = items
         self.items.append(("back", "exit"))
+
 
     def set_items(self, new_items):
         self.window.clear()
@@ -96,6 +103,9 @@ class Menu(TextPanel):
         # self.window.clear()
 
         while True:
+            if self.border:
+                self.window.border(*self.border)
+                # abc()
             self.window.refresh()
             curses.doupdate()
             for index, item in enumerate(self.items):
@@ -128,7 +138,7 @@ class Menu(TextPanel):
         self.hide()
 
 class InputBox(TextPanel):
-    def __init__(self, y, x, stdscreen, prompt, size_y = 20, size_x = 50):
+    def __init__(self, y, x, stdscreen, prompt, size_y = 20, size_x = 50, border = False):
         super(InputBox, self).__init__(y, x, stdscreen, size_y, size_x)
 
         curses.curs_set(1)
@@ -166,8 +176,8 @@ class InputBox(TextPanel):
         return bytes.decode(got_string)
 
 class OptionsBox(TextPanel):
-    def __init__(self, y, x, stdscreen, prompt, items, vertical=True, size_y = 20, size_x = 50):
-        super(OptionsBox, self).__init__(y, x, stdscreen, size_y, size_x)
+    def __init__(self, y, x, stdscreen, prompt, items, vertical=True, size_y = 20, size_x = 50, border = False):
+        super(OptionsBox, self).__init__(y, x, stdscreen, size_y, size_x, border)
 
         self.window.keypad(1)
         self.vertical = vertical
@@ -217,7 +227,7 @@ class OptionsBox(TextPanel):
 
             if key in [curses.KEY_ENTER, ord("\n")]:
                 self.hide()
-                return self.items[self.position]
+                return (self.items[self.position], self.position)
 
 
             elif key == curses.KEY_UP:
@@ -256,7 +266,7 @@ class OptionsBox(TextPanel):
 
         if key in [curses.KEY_ENTER, ord("\n")]:
             self.hide()
-            return self.items[self.position]
+            return (self.items[self.position], self.position)
 
 
         elif key == curses.KEY_UP:
@@ -265,4 +275,4 @@ class OptionsBox(TextPanel):
         elif key == curses.KEY_DOWN:
             self.navigate(1)
 
-        return None
+        return (None, -1)

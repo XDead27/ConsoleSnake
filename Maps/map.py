@@ -13,6 +13,11 @@ class Map:
         self.spawnLocations = []
         self.refreshRate = 0.5
 
+    def reset(self):
+        self.field = None
+        self.obstacles = []
+        self.fruitSpawners = []
+
     def getDetails(self):
         fruit_details = []
         alreadyMentioned = []
@@ -47,6 +52,17 @@ class Map:
     def getSpecificColors(self):
         return self.getFruitColors()
     
+    # To override
+    def getSpecificOptions(self):
+        return {
+                "refresh_rate": self.refreshRate
+            }
+
+    def setOptions(self, options):
+        if options.get("refresh_rate"):
+            self.refreshRate = 0.1 if float(options.get("refresh_rate")) <= 0.1 else float(options.get("refresh_rate"))
+        
+
     # def askForParams(self, stdscr):
     #     pass
 

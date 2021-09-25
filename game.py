@@ -36,12 +36,10 @@ class Game(threading.Thread):
 
         self.game_id = game_id
 
+        self.map = map
+        self.map.reset()
         self.game_state = GameState.NOT_STARTED
 
-        m = __import__("Maps." + map)
-        m = getattr(m, map)
-
-        self.map = getattr(m, map.capitalize())()
         self.colorSettings = []
 
         # The 'hashmap' 
@@ -251,3 +249,6 @@ class Game(threading.Thread):
             self.update()
             # Do not waste cpu cycles
             time.sleep(0.01)
+        
+        # Reset map after game ended
+        self.map.reset()

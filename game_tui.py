@@ -47,6 +47,9 @@ def displayError(stdscr, error):
 
     time.sleep(3)
 
+    stdscr.clear()
+    stdscr.refresh()
+
 
 class ConsoleSnakeApp(object):
     def __init__(self, stdscreen):
@@ -114,7 +117,7 @@ class ConsoleSnakeApp(object):
             ("play", self.display_rooms_menu),
             ("settings", self.display_settings_menu),
         ]
-        main_menu = tui.Menu(main_menu_items, int(2*y/3), int(x/2), self.screen, size_y=8, size_x=13)
+        main_menu = tui.Menu(main_menu_items, int(2*y/3), int(x/2), self.screen, size_y=5, size_x=14, border=(0, 0, " ", " ", 0, 0, 0, 0))
         main_menu.items[-1] = ("exit", "exit")
         main_menu.display()
 
@@ -136,14 +139,11 @@ class ConsoleSnakeApp(object):
             rooms_submenu_items.append((room_name, room_join))            
 
         y, x = self.screen.getmaxyx()
-        # self.rooms_player_count = tui.PanelList(int(y/2) + 1, int(x/2) + 15, [str(r.get("player_count")) for r in rooms], self.screen, size_y=len(rooms_submenu_items), size_x=15)
-        # self.rooms_player_count.display()
-
-        self.rooms_submenu = tui.Menu(rooms_submenu_items, int(y/2), int(x/2), self.screen, size_y=len(rooms_submenu_items) + 3, size_x=30)
-        self.rooms_submenu.window.border(0, 0, 0, 0, 0, 0, 0, 0)
+        self.rooms_submenu = tui.Menu(rooms_submenu_items, int(y/2), int(x/2), self.screen, \
+                                      size_y=len(rooms_submenu_items) + 3, size_x=30, \
+                                      border=(0, 0, " ", " ", 0, 0, 0, 0))
         self.rooms_submenu.display()
 
-        # self.rooms_player_count.hide()
 
     def refresh_rooms_menu(self):
         self.screen.clear()
@@ -162,7 +162,10 @@ class ConsoleSnakeApp(object):
 
             rooms_submenu_items.append((room_name, room_join))        
 
-        self.rooms_submenu.set_items(rooms_submenu_items)
+        y, x = self.screen.getmaxyx()
+        self.rooms_submenu = tui.Menu(rooms_submenu_items, int(y/2), int(x/2), self.screen, \
+                                      size_y=len(rooms_submenu_items) + 3, size_x=30, \
+                                      border=(0, 0, " ", " ", 0, 0, 0, 0))
     
     def join_room(self, room_id):
         try:
@@ -180,6 +183,7 @@ class ConsoleSnakeApp(object):
         
         while True:
             last_room_data = None
+            ask_refresh = False
 
             y, x = self.screen.getmaxyx()
 
@@ -202,7 +206,7 @@ class ConsoleSnakeApp(object):
 
             while True:
                 # Initialize/Update display if we have any changes in data
-                if not last_room_data == room_data:
+                if (not last_room_data == room_data) or ask_refresh:
                     player_names = [r.get("name") for r in room_data.get("players")]
 
                     items = ["PLAYER LIST", "======================", " "]
@@ -211,19 +215,22 @@ class ConsoleSnakeApp(object):
                     items2 = ["OPTIONS", "======================", " "]
                     items2.append("STATUS: " + int_to_string(room_data.get("game_state")))
                     items2.append("MAP: " + room_data.get("map"))
-                    items2.append("REFRESH: " + str(room_data.get("refresh_rate")))
                     items2.append("HOST: " + room_data.get("host_name"))
                     items2.append("PLAYERS: " + str(room_data.get("player_count")))
+                    items2.append("-")
+                    items2.extend([option.upper().replace("_", " ") + ": " + str(room_data.get("options").get(option)) for option in room_data.get("options")])
+
                     size_y = max(len(player_names), len(items))
-                    player_list = tui.PanelList(int(y/2), int(x/2) - 15, items, self.screen, size_y + 7, size_x=30)
+                    player_list = tui.PanelList(int(y/2), int(x/2) - 15, items, self.screen, size_y + 10, size_x=30, border=(" ", ".", 0, 0,0,0,0,0))
                     player_list.display()
-                    options_list = tui.PanelList(int(y/2), int(x/2) + 15, items2, self.screen, size_y + 7, size_x=30)
+                    options_list = tui.PanelList(int(y/2), int(x/2) + 15, items2, self.screen, size_y + 10, size_x=30, border=(" ", 0," "," ", " ", 0, " ", 0))
                     options_list.display()
 
                     last_room_data = room_data
+                    ask_refresh = False
 
                 # Display options menu in async mode (it doesn't block)
-                chs = room_option.display_async()
+                chs = room_option.display_async()[0]
 
                 if chs == 'start':
                     try:
@@ -231,8 +238,8 @@ class ConsoleSnakeApp(object):
                     except RuntimeError:
                         chs = 'back'
                 elif chs == 'configure':
-                    
-                    pass
+                    self.display_configuration_menu(room_data.get("options"))
+                    ask_refresh = True
                 elif chs == 'delete': 
                     try:
                         deleted_successfully = self.exec_try_n_times(self.game_client.delete_room, 3)
@@ -279,14 +286,52 @@ class ConsoleSnakeApp(object):
             player_list.hide() 
         return
 
-    def create_room(self):
-        name, map, f_input, refresh_rate = self.display_create_room_dialog()
+    def display_configuration_menu(self, room_options):
+        self.screen.clear()
 
-        exec_create = lambda:   self.game_client.create_room(name, map, [], f_input, refresh_rate)
-    
+        while True:
+            y, x = self.screen.getmaxyx()
+
+            configuration_items = [option for option in room_options]
+            configuration_values = [str(room_options.get(option)) for option in room_options]
+            config_values = tui.PanelList(int(y/2), int(x/2) + 10, configuration_values, self.screen, len(configuration_values) + 4, size_x=10)
+            config_values.display()
+
+            set_option = tui.OptionsBox(int(y/2)-2, int(x/2) - 5, self.screen, "", configuration_items, vertical=True, size_y=len(configuration_items) + 6, size_x=15)
+            set_option.items[-1] = "done"
+            chs = set_option.display()
+
+            if chs[0] == "done":
+                break
+
+            new_value = self.display_set_option_dialog(chs[0])
+
+            room_options[chs[0]] = new_value
+
         try:
-            room_id = self.exec_try_n_times(exec_create, 3)
+            self.exec_try_n_times(lambda: self.game_client.set_room_options(room_options), 3)
         except RuntimeError:
+            self.screen.clear()
+            return
+
+        self.screen.clear()
+
+    def display_set_option_dialog(self, option_to_set):
+        y, x = self.screen.getmaxyx()
+
+        option_dialog = tui.InputBox(int(y/2), int(x/2), self.screen, "New value:", size_y=7, size_x=20)
+        option_dialog.window.clear()
+        value = option_dialog.display()
+
+        option_dialog.hide()
+
+        return value
+
+    def create_room(self):
+        try:
+            name, map, f_input, refresh_rate = self.display_create_room_dialog()
+            room_id = self.exec_try_n_times(lambda: self.game_client.create_room(name, map, [], f_input, refresh_rate), 3)
+        except Exception:
             return
 
         self.refresh_rooms_menu()
@@ -304,7 +349,7 @@ class ConsoleSnakeApp(object):
         refresh_rate = 0.5
 
         map_submenu = tui.OptionsBox(int(y/2), int(x/2), self.screen, "Choose map:", ['classic', 'duel', 'survival'], size_y=9, size_x=15)
-        chosen_map = map_submenu.display()
+        chosen_map = map_submenu.display()[0]
         if chosen_map == 'abort':
             return
         
@@ -352,18 +397,19 @@ class ConsoleSnakeApp(object):
         character_input = tui.InputBox(int(y/2), int(x/2), self.screen, prompt="Character: (some characters may not work, for example g)", size_y=7, size_x=60)
         self.game_client.settings['aesthetics']['char'] = str(character_input.display())
 
-        color_options = tui.OptionsBox(int(y/2), int(x/2), self.screen, "Color TAIL - FOREGROUND: ", ["black", "white", "red", "blue", "green", "magenta", "cyan", "yellow"], \
+        color_options = tui.OptionsBox(int(y/2), int(x/2), self.screen, \
+                                        "Color TAIL - FOREGROUND: ", ["black", "white", "red", "blue", "green", "magenta", "cyan", "yellow"], \
                                         size_y=20, size_x=25)
-        tail_fg = color_options.display()
+        tail_fg = color_options.display()[0]
 
         color_options.prompt = "Color TAIL - BACKGROUND:"
-        tail_bg = color_options.display()
+        tail_bg = color_options.display()[0]
 
         color_options.prompt = "Color HEAD - FOREGROUND:"
-        head_fg = color_options.display()
+        head_fg = color_options.display()[0]
 
         color_options.prompt = "Color HEAD - BACKGROUND:"
-        head_bg = color_options.display()
+        head_bg = color_options.display()[0]
 
         self.game_client.settings['aesthetics']['color_tail'] = {
                 "fg": tail_fg,

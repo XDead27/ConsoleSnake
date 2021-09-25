@@ -1,10 +1,12 @@
 import random
 
 class Room:
-    def __init__(self, id, name, map, computers, f_input, refresh_rate):
+    def __init__(self, id, name, map_name, map_instance, computers, f_input, refresh_rate):
         self.id = id
         self.name = name
-        self.map = map
+        self.map_name = map_name
+        self.map_instance = map_instance
+        self.map_instance.refreshRate = refresh_rate
         self.computers = computers
         self.f_input = f_input
         self.refresh_rate = refresh_rate
@@ -43,16 +45,21 @@ class Room:
         return self.host.get("name") if self.host else "N/A"
 
     def json_data(self):
-        return {
+        options = self.map_instance.getSpecificOptions()
+        options.update({
+            "flush_input": self.f_input,
+            # "refresh_rate": self.refresh_rate,
+        })
+        ret = {
                 "id": self.id,
                 "name": self.name,
-                "map": self.map,
+                "map": self.map_name,
                 "players": self.players,
                 "player_count": self.player_count(),
                 "computers": self.computers,
-                "flush_input": self.f_input,
-                "refresh_rate": self.refresh_rate,
+                "options": options,
                 "host": self.host,
                 "host_name": self.host_name(),
                 "game_state": self.game_state
             }
+        return ret
