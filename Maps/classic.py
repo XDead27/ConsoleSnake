@@ -6,10 +6,10 @@ import Resources.fruits as frt
 
 
 class Classic(Map):
+    DEFAULT_SIZE = 12
     def __init__(self):
         super(Classic, self).__init__()
 
-        self.DEFAULT_SIZE = 12
         self.height = self.width = self.DEFAULT_SIZE
         self.maxPlayers = len(self.spawnLocations)
 
@@ -67,31 +67,6 @@ class Classic(Map):
         self.p1 = self.field.addPerimeter(self.height, self.width, [0, 0], -1, 's', 31)
         self.fs1.bindAreaToPerimeter(self.p1)
         self.field.refresh()
-
-
-    # def askForParams(self, stdscr):
-    #     super(Classic, self).askForParams(stdscr)
-    #     curses.flushinp()
-    #     curses.nocbreak()
-    #     stdscr.nodelay(False)
-    #     stdscr.addstr("Size (height): ")
-    #     stdscr.refresh()
-    #     h = stdscr.getstr(1, 0, 3).decode("utf-8")
-    #     stdscr.addstr("Size (width): ")
-    #     w = stdscr.getstr(3, 0, 3).decode("utf-8")
-
-    #     h = self.DEFAULT_SIZE if h == '' else int(h)
-    #     w = self.DEFAULT_SIZE if w == '' else int(w)
-
-    #     self.field.setDimensions(h + 1, w + 1)
-    #     self.field.reset()
-    #     self.field.shapes.remove(self.p1)
-    #     self.p1 = self.field.addPerimeter(h, w, [0, 0], -1, 's', 101)
-    #     self.fs1.bindAreaToPerimeter(self.p1)
-    #     self.field.refresh()
-
-    #     curses.cbreak()
-    #     stdscr.nodelay(True)
 
     def update(self):
         super(Classic, self).update()

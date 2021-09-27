@@ -13,29 +13,53 @@ port = 1403
 parser = ap.ArgumentParser(description='Snek gaem with frends :>')
 parser.add_argument("-p", "--port", type=int, default=1403, help="Port to connect to")
 parser.add_argument("-b", "--host", default="127.0.0.1", help="Host ip address to connect to")
-parser.add_argument("-c", "--curses-refresh", type=float, default=0.07, help="Maximum refresh rate for curses")
+parser.add_argument("-c", "--curses-refresh", type=float, default=0.01, help="Maximum refresh rate for curses")
 
 args = parser.parse_args()
 
 host = args.host
 port = args.port
 
-def drawField(stdscr, drawn_map, curses_color):
-    for x in range(len(drawn_map)):
-        for y in range(len(drawn_map[x])):
-            if curses_color:
-                stdscr.addstr(text2art(drawn_map[x][y][0], font='cjk'), curses.color_pair(drawn_map[x][y][1]))
-            else:
-                stdscr.addstr(text2art(drawn_map[x][y][0], font='cjk'))
-        stdscr.addstr('\n')
+# Function that compares both fields and returns an array of 
+# positions for the differences and their new values
+def compareFields(init_field, post_field):
+    if init_field == None:
+        init_field = [[[0, 0] for j in range(len(post_field))] for i in range(len(post_field))]
 
-def displayScore(stdscr, score):
-    stdscr.addstr("\nScore:\n")
+    if (len(init_field) != len(post_field)) or (len(init_field[0]) != len(post_field[0])):
+        raise RuntimeError("Comparing fields of different size!")
+
+    diff_fields = []
+    for x in range(len(init_field)):
+        # weird_spaces_counter = 0
+        for y in range(len(init_field[x])):
+            if not init_field[x][y] == post_field[x][y]:
+                diff_fields.append([x, 2 * y, post_field[x][y][0], post_field[x][y][1]]) 
+            # if post_field[x][y][0] == "  ":
+                # weird_spaces_counter += 1
+
+    return diff_fields
+
+def drawField(stdscr, init_map, post_map, curses_color):
+    diff_fields = compareFields(init_map, post_map)
+    for difference in diff_fields:
+        y = difference[0]
+        x = difference[1]
+        c = difference[2]
+        color = difference[3]
+        
+        if curses_color:
+            stdscr.addstr(y, x, text2art(c, font='cjk'), curses.color_pair(color))
+        else:
+            stdscr.addstr(y, x, text2art(c, font='cjk'))
+
+def displayScore(stdscr, score, start_position=20):
+    stdscr.addstr(start_position, 1, "Score:\n\n")
     for line in score:
         name = line.get("name")
         score = line.get("score")
         
-        stdscr.addstr(">> " + name + ':\t' + str(score))
+        stdscr.addstr(" >> " + name + ':\t' + str(score))
         stdscr.addstr('\n')
 
 def displayError(stdscr, error):
@@ -131,12 +155,15 @@ class ConsoleSnakeApp(object):
         except RuntimeError:
             return
 
+        room_ids = [room.get("id") for room in rooms]
+
         for room in rooms:
             room_name = "(" + str(room.get("player_count")) + "/2) " + room.get("name")
-            def room_join():
-                self.join_room(room.get("id"))
 
-            rooms_submenu_items.append((room_name, room_join))            
+            # In case you are wondering, here I am doing a very illegal thing and accessing .position from a thing that does
+            # not yet exist. Apparently lambda functions do not pair well with variable arguments in a loop :)
+            # The -2 is there to take into account the 'create room' and 'refresh' entries
+            rooms_submenu_items.append((room_name, lambda: self.join_room(room_ids[self.rooms_submenu.position - 2])))
 
         y, x = self.screen.getmaxyx()
         self.rooms_submenu = tui.Menu(rooms_submenu_items, int(y/2), int(x/2), self.screen, \
@@ -155,17 +182,19 @@ class ConsoleSnakeApp(object):
         except RuntimeError:
             return
 
+        room_ids = [room.get("id") for room in rooms]
+
         for room in rooms:
             room_name = "(" + str(room.get("player_count")) + "/2) " + room.get("name")
-            def room_join():
-                self.join_room(room.get("id"))
 
-            rooms_submenu_items.append((room_name, room_join))        
+            # In case you are wondering, here I am doing a very illegal thing and accessing .position from a thing that does
+            # not yet exist. Apparently lambda functions do not pair well with variable arguments in a loop :)
+            # The -2 is there to take into account the 'create room' and 'refresh' entries
+            rooms_submenu_items.append((room_name, lambda: self.join_room(room_ids[self.rooms_submenu.position - 2])))       
 
-        y, x = self.screen.getmaxyx()
-        self.rooms_submenu = tui.Menu(rooms_submenu_items, int(y/2), int(x/2), self.screen, \
-                                      size_y=len(rooms_submenu_items) + 3, size_x=30, \
-                                      border=(0, 0, " ", " ", 0, 0, 0, 0))
+        self.rooms_submenu.set_items(rooms_submenu_items)
+        # y, x = self.screen.getmaxyx()
+        self.rooms_submenu.set_window_size(len(rooms_submenu_items) + 2, 30)
     
     def join_room(self, room_id):
         try:
@@ -249,6 +278,7 @@ class ConsoleSnakeApp(object):
                         if not deleted_successfully:
                             displayError(self.screen, "The room was not deleted successfully!")
 
+                        self.refresh_rooms_menu()
                         player_list.hide() 
                         return
                 elif chs == 'back':
@@ -352,16 +382,6 @@ class ConsoleSnakeApp(object):
         chosen_map = map_submenu.display()[0]
         if chosen_map == 'abort':
             return
-        
-        # DEPRECATED
-        # finput_option = tui.OptionsBox(int(y/2.2), int(x/3.2), self.screen, "Flush input?", ['yes', 'no'], vertical=False)
-        # f_input = finput_option.display()
-        # if f_input == 'abort':
-        #     return
-        # elif f_input == 'yes':
-        #     f_input = True
-        # else:
-        #     f_input = False
 
         f_input = True
 
@@ -435,7 +455,8 @@ class ConsoleSnakeApp(object):
             return
         
         winner = None
-        curses_refresh = max(0.07, args.curses_refresh)
+        last_drawn_map = None
+        curses_refresh = max(0.001, args.curses_refresh)
 
         if game_state == GameState.STARTED:
             curses.cbreak()
@@ -460,9 +481,10 @@ class ConsoleSnakeApp(object):
                 except RuntimeError:
                     break
 
-                game_curses_pad.clear()
-                drawField(game_curses_pad, drawn_map, curses_color)
-                displayScore(game_curses_pad, score_data)
+                # game_curses_pad.clear()
+                drawField(game_curses_pad, last_drawn_map, drawn_map, curses_color)
+                displayScore(game_curses_pad, score_data, len(drawn_map) + 5)
+                last_drawn_map = drawn_map
 
                 # Update screen size
                 scr_height, scr_width = self.screen.getmaxyx()

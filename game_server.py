@@ -65,7 +65,7 @@ def handle_request(content):
             response_value = {
                     "message": "Succesfully added player to room!",
                     "player_id": player_id,
-                    "room_data": active_rooms.get(room_id).json_data()
+                    "room_data": wanted_room.json_data()
                 }
         else:
             response_action = "notice"

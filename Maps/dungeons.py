@@ -12,19 +12,24 @@ from Resources.utils import isInRange
 #A procedurally generated map on a field that is as big as possible
 class Dungeons(Map):
     #Specific to this map
-    MIN_PER_DIM = 7
-    MAX_PER_DIM = 25
+    MIN_PER_DIM = 5
+    MAX_PER_DIM = 20
+    DEFAULT_SIZE = 40
     
     def __init__(self):
         super(Dungeons, self).__init__()
 
-        #Colors for our map
-        curses.init_pair(100, curses.COLOR_BLACK, curses.COLOR_BLACK)
-        curses.init_pair(101, curses.COLOR_RED, curses.COLOR_BLACK)
-        curses.init_pair(102, curses.COLOR_BLUE, curses.COLOR_BLACK)
+        self.height = self.width = self.DEFAULT_SIZE
 
-        self.field = Field(35, 78, 0, '  ')
-        self.perimeter = self.field.addPerimeter(2, 2, [0, 0], -1, 'm', 101)
+        self.reset()
+
+        self.maxPlayers = 4
+        
+
+    def reset(self):
+        super(Dungeons, self).reset()
+        self.field = Field(self.height + 1, self.height + 1, 0, '  ')
+        self.perimeter = self.field.addPerimeter(self.height, self.width, [0, 0], -2, 'm', 31)
         self.obstacles.append(self.perimeter)
 
         #Setup spawners
@@ -38,16 +43,60 @@ class Dungeons(Map):
         # fs2.setMaxFruits(1)
         # fs2.setFruitRarity(0.002)
 
+        self.field.setDimensions(self.height, self.width)
+        self.field.reset()
+        self.field.resizePerimeter(self.perimeter, self.height, self.width)
+        
+        #Starting perimeters
+        start1 = self.field.addPerimeter(8, 8, [0, 0], -1, 's', 31)
+        start2 = self.field.addPerimeter(8, 8, [self.field.height - 8, 0], -1, 's', 31)
+        start3 = self.field.addPerimeter(8, 8, [0, self.field.width - 8], -1, 's', 31)
+        start4 = self.field.addPerimeter(8, 8, [self.field.height - 8, self.field.width - 8], -1, 's', 31)
+        self.obstacles.append(start1)
+        self.obstacles.append(start2)
+        self.obstacles.append(start3)
+        self.obstacles.append(start4)
+
+        self.createMap()
+
         self.lastNumberOfFruits = [0] * len(self.fruitSpawners)
 
-        self.maxPlayers = 4
         self.spawnLocations = [[1, 1],[1, self.field.width - 7], [self.field.height - 7, 1], [self.field.height - 7, self.field.width - 7]]
-        
+
+    def getSpecificColors(self):
+        specific_colors = super(Dungeons, self).getSpecificColors() 
+        specific_colors.extend([
+            {"number": 31, "fg": "red", "bg": "black"},
+            {"number": 32, "fg": "white", "bg": "black"}
+        ])
+        return specific_colors
+
+    def getSpecificOptions(self):
+        opt = super(Dungeons, self).getSpecificOptions()
+
+        new_opt = {
+            "height": self.height,
+            "width": self.width
+        }
+
+        opt.update(new_opt)
+
+        return opt
+
+    def setOptions(self, options={}):
+        super(Dungeons, self).setOptions(options)
+        if options.get("height"):
+            self.height = self.DEFAULT_SIZE if int(options.get("height")) <= 4 else int(options.get("height"))
+
+        if options.get("width"):
+            self.width = self.DEFAULT_SIZE if int(options.get("width")) <= 4 else int(options.get("width"))
+
+        self.reset()
         
     #Refactor Refactor Refactor
     def createMap(self):
         #We spawn the perimeters, checking not to overlap eachother
-        MAX_TRIES = 40
+        MAX_TRIES = 140
         full = False
         
         #Get list of perimeters
@@ -83,7 +132,7 @@ class Dungeons(Map):
                         break
                     
                 if valid:
-                    new_per = self.field.addPerimeter(per_height, per_width, per_pos, -1, 'm', 101)
+                    new_per = self.field.addPerimeter(per_height, per_width, per_pos, -3, 'o', 32)
                     if new_per == -1:
                         break
                     self.obstacles.append(new_per)
@@ -99,29 +148,15 @@ class Dungeons(Map):
                 
                 tries += 1
                 
+        self.field.refresh()
                 
-        #We create the bridges, as follows
-        ##randomly pick a starting point on the outer edge of an perimeter
-        ##randomly pick a slope
-        ##start checking, step by step, the sqares that complete the line with that slope
-        ##when reaching another wall, mark that as the endpoint
-        ##build a bridge from 2 obstacle segments and one blank segment with the same slope and different offsets
-        
-    def askForParams(self, stdscr):
-        #Get a sneaky reference to the stdscr size
-        self.rows, self.cols = stdscr.getmaxyx()
-        self.field.setDimensions(self.rows - 10, math.floor(self.cols / 2))
-        self.field.resizePerimeter(self.perimeter, self.rows - 10, math.floor(self.cols / 2))
-        
-        #Starting perimeters
-        start1 = self.field.addPerimeter(8, 8, [0, 0], -1, 's', 102)
-        start2 = self.field.addPerimeter(8, 8, [self.field.height - 8, 0], -1, 's', 102)
-        start3 = self.field.addPerimeter(8, 8, [0, self.field.width - 8], -1, 's', 102)
-        start4 = self.field.addPerimeter(8, 8, [self.field.height - 8, self.field.width - 8], -1, 's', 102)
-        self.obstacles.append(start1)
-        self.obstacles.append(start2)
-        self.obstacles.append(start3)
-        self.obstacles.append(start4)
+        # We create the bridges, as follows
+        ## randomly pick a starting point on the outer edge of an perimeter
+        ## randomly pick a slope
+        ## start checking, step by step, the sqares that complete the line with that slope
+        ## when reaching another wall, mark that as the endpoint
+        ## build a bridge from 2 obstacle segments and one blank segment with the same slope and different offsets
+
 
     def update(self):
         super(Dungeons, self).update()

@@ -22,11 +22,17 @@ class TextPanel(object):
         panel.update_panels()
 
     def set_window_size(self, size_y, size_x):
-        self.window.clear()
+        # self.window.clear()
         self.window = self.stdscreen.subwin(size_y, size_x, self.spawn_y - int(size_y/2), self.spawn_x - int(size_x/2))
         self.panel = panel.new_panel(self.window)
-        self.panel.hide()
         panel.update_panels()
+        self.panel.top()
+        self.panel.show()
+        self.window.refresh()
+        if self.border:
+            self.stdscreen.border(*self.border)
+        curses.doupdate()
+        # self.panel.hide()
 
     def display(self):
         self.panel.top()
@@ -84,6 +90,10 @@ class Menu(TextPanel):
         self.items = items
         self.items.append(("back", "exit"))
 
+    def set_window_size(self, size_y, size_x):
+        super(Menu, self).set_window_size(size_y, size_x)
+
+        self.window.keypad(1)
 
     def set_items(self, new_items):
         self.window.clear()
@@ -103,9 +113,10 @@ class Menu(TextPanel):
         # self.window.clear()
 
         while True:
+            # self.set_window_size(len(self.items) + 3, self.size_x)
             if self.border:
                 self.window.border(*self.border)
-                # abc()
+
             self.window.refresh()
             curses.doupdate()
             for index, item in enumerate(self.items):
