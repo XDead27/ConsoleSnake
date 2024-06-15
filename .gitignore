@@ -5,3 +5,4 @@ player_settings.json
 classic_keras.model/
 .vscode/
 Logs/
+*.egg-info/

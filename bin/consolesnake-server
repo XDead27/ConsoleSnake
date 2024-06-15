@@ -1,3 +1,3 @@
 #!/bin/bash
 
-/bin/python3 /usr/share/consolesnake/game_server.py $1 $2
+/usr/bin/env python /usr/share/consolesnake/game_server.py $1 $2
