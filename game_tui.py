@@ -24,10 +24,10 @@ port = args.port
 # positions for the differences and their new values
 def compareFields(init_field, post_field):
     if init_field == None:
-        init_field = [[[0, 0] for j in range(len(post_field))] for i in range(len(post_field))]
+        init_field = [[[0, 0] for j in range(len(post_field[0]))] for i in range(len(post_field))]
 
     if (len(init_field) != len(post_field)) or (len(init_field[0]) != len(post_field[0])):
-        raise RuntimeError("Comparing fields of different size!")
+        raise RuntimeError(f"Comparing fields of different size ({len(init_field)}, {len(init_field[0])}) with ({len(post_field)}, {len(post_field[0])})!")
 
     diff_fields = []
     for x in range(len(init_field)):

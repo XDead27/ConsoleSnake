@@ -1,7 +1,7 @@
 
 .PHONY: requirements
 requirements:
-	pip3 install -r requirements.txt
+	pip install -r requirements.txt
 
 .PHONY: install
 install:

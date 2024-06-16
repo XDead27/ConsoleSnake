@@ -11,20 +11,26 @@ class Duel(Map):
     def __init__(self):
         super(Duel, self).__init__()
 
+        self.maxPlayers = 2
+
+        self.reset()
+
+    def reset(self):
+        super(Duel, self).reset()
         self.field = Field(17, 38, 0, '  ')
         self.p1 = self.field.addPerimeter(8, 8, [0, 0], -1, 's', 31)
         self.p2 = self.field.addPerimeter(8, 8, [0, 17], -1, 's', 31)
         self.obstacles.append(self.p1)
         self.obstacles.append(self.p2)
 
-        #Only for this map
+        # Only for this map
         self.extended = False
         self.fruitsEaten = 0
         self.refreshIncrement = 0.02
 
-        ##This should be rethinked as I am unable to can
-        #Note from future: I really do not want to refactor this
-        #For Teliprt fruit
+        ## This should be rethinked as I am unable to can
+        # Note from future: I really do not want to refactor this
+        # For Teliprt fruit
         fs11 = frt.FruitSpawner(frt.ObstacleFruit)
         fs11.bindAreaToPerimeter(self.p1)
         fs11.setMaxFruits(1)
@@ -35,7 +41,7 @@ class Duel(Map):
         fs12.setMaxFruits(1)
         fs12.setFruitRarity(0.01)
 
-        #For standard fruits
+        # For standard fruits
         fs21 = frt.FruitSpawner(frt.Plus1Fruit)
         fs21.bindAreaToPerimeter(self.p1)
         fs21.setMaxFruits(1)
@@ -63,10 +69,9 @@ class Duel(Map):
         self.fruitSpawners.append(fs31)
         self.fruitSpawners.append(fs32)
 
+        self.spawnLocations = [[1, 1], [1, 18]]
         self.lastNumberOfFruits = [0] * len(self.fruitSpawners)
 
-        self.maxPlayers = 2
-        self.spawnLocations = [[1, 1], [1, 18]]
 
     def getSpecificColors(self):
         specific_colors = super(Duel, self).getSpecificColors() 
