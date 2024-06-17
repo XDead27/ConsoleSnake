@@ -1,0 +1,5 @@
+#!/bin/bash
+
+INSTALL_DIR="{INSTALL_DIR_PLACEHOLDER}"
+. "$INSTALL_DIR/share/consolesnake/venv/bin/activate"
+python "$INSTALL_DIR/share/consolesnake/game_server.py" "$@"

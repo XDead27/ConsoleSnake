@@ -1,20 +1,21 @@
 
 .PHONY: requirements
 requirements:
-	pip install -r requirements.txt
+	python -m venv $(DESTDIR)/share/consolesnake/venv
+	. $(DESTDIR)/share/consolesnake/venv/bin/activate && pip install -r requirements.txt
 
 .PHONY: install
 install:
-	install -d ${DESTDIR}/usr/share/consolesnake/Networking ${DESTDIR}/usr/share/consolesnake/Maps ${DESTDIR}/usr/share/consolesnake/Resources ${DESTDIR}/usr/bin/
-	install game_tui.py game_client.py game_server.py game.py ${DESTDIR}/usr/share/consolesnake/
-	install Resources/* ${DESTDIR}/usr/share/consolesnake/Resources/
-	install Networking/* ${DESTDIR}/usr/share/consolesnake/Networking/
-	install Maps/* ${DESTDIR}/usr/share/consolesnake/Maps/
+	install -d ${DESTDIR}/share/consolesnake/Networking ${DESTDIR}/share/consolesnake/Maps ${DESTDIR}/share/consolesnake/Resources ${DESTDIR}/bin/
+	install game_tui.py game_client.py game_server.py game.py ${DESTDIR}/share/consolesnake/
+	install Resources/*.py ${DESTDIR}/share/consolesnake/Resources/
+	install Networking/*.py ${DESTDIR}/share/consolesnake/Networking/
+	install Maps/*.py ${DESTDIR}/share/consolesnake/Maps/
 
-	install bin/consolesnake ${DESTDIR}/usr/bin/
-	install bin/consolesnake-server ${DESTDIR}/usr/bin/
+	sed "s|{INSTALL_DIR_PLACEHOLDER}|$(DESTDIR)|g" bin/consolesnake.template > $(DESTDIR)/bin/consolesnake
+	sed "s|{INSTALL_DIR_PLACEHOLDER}|$(DESTDIR)|g" bin/consolesnake-server.template > $(DESTDIR)/bin/consolesnake-server
+	chmod +x $(DESTDIR)/bin/consolesnake $(DESTDIR)/bin/consolesnake-server
 
 uninstall:
-	rm -r -I ${DESTDIR}/usr/share/consolesnake
-	rm -i ${DESTDIR}/usr/bin/consolesnake*
-	rm -r -I ${HOME}/.local/share/consolesnake
+	rm -r -I ${DESTDIR}/share/consolesnake
+	rm -i ${DESTDIR}/bin/consolesnake*
